@@ -123,6 +123,11 @@ Request payload can include:
 - `apiKey` / `apiBaseUrl` / `apiModel` / `apiReasoningModel` (optional runtime override from UI settings)
 - `attachments` (optional text attachments from composer: `txt/md/json/csv/log/xml/yaml`)
 - backend web-search timeout can be tuned by `CHATWEB_WEB_SEARCH_TIMEOUT_SECONDS` (default `2`)
+- web-search provider can be selected by:
+  - `CHATWEB_WEB_SEARCH_PROVIDER=duckduckgo|searxng|serpapi|tavily`
+  - `CHATWEB_WEB_SEARCH_SEARXNG_URL=http://127.0.0.1:8080/search`
+  - `CHATWEB_WEB_SEARCH_SERPAPI_KEY=...`
+  - `CHATWEB_WEB_SEARCH_TAVILY_KEY=...`
 
 2. `binary`
 - `Content-Type: application/octet-stream`

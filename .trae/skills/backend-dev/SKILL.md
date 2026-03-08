@@ -53,6 +53,11 @@ Use this skill whenever the task modifies backend code.
   - `CHATWEB_AI_HTTP_TRUST_ENV` (default `false` to avoid unexpected proxy issues)
   - `CHATWEB_WEB_SEARCH_TIMEOUT_SECONDS` (default `2`, avoid long blocking when web search unavailable)
   - `CHATWEB_AI_SEND_REASONING_EFFORT` (default `false` for DeepSeek)
+  - web search provider is configurable:
+    - `CHATWEB_WEB_SEARCH_PROVIDER=duckduckgo|searxng|serpapi|tavily`
+    - `CHATWEB_WEB_SEARCH_SEARXNG_URL`
+    - `CHATWEB_WEB_SEARCH_SERPAPI_KEY`
+    - `CHATWEB_WEB_SEARCH_TAVILY_KEY`
   - DeepSeek default path is text chat; attachment handling is text-context enrichment, not native file/image parsing
   - fallback to local mock stream when API key is empty
   - `CHATWEB_AI_FALLBACK_ON_ERROR` controls fallback when provider call fails

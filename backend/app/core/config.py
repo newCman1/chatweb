@@ -45,6 +45,10 @@ class Settings:
     ai_timeout_seconds: float
     ai_http_trust_env: bool
     web_search_timeout_seconds: float
+    web_search_provider: str
+    web_search_searxng_url: str
+    web_search_serpapi_key: str
+    web_search_tavily_key: str
     ai_reasoning_effort: str
     ai_send_reasoning_effort: bool
     thinking_enabled: bool
@@ -66,6 +70,10 @@ def load_settings() -> Settings:
         ai_timeout_seconds=_float("CHATWEB_AI_TIMEOUT_SECONDS", 60.0),
         ai_http_trust_env=_bool("CHATWEB_AI_HTTP_TRUST_ENV", False),
         web_search_timeout_seconds=_float("CHATWEB_WEB_SEARCH_TIMEOUT_SECONDS", 2.0),
+        web_search_provider=os.getenv("CHATWEB_WEB_SEARCH_PROVIDER", "duckduckgo"),
+        web_search_searxng_url=os.getenv("CHATWEB_WEB_SEARCH_SEARXNG_URL", "http://127.0.0.1:8080/search"),
+        web_search_serpapi_key=os.getenv("CHATWEB_WEB_SEARCH_SERPAPI_KEY", ""),
+        web_search_tavily_key=os.getenv("CHATWEB_WEB_SEARCH_TAVILY_KEY", ""),
         ai_reasoning_effort=os.getenv("CHATWEB_AI_REASONING_EFFORT", "medium"),
         ai_send_reasoning_effort=_bool("CHATWEB_AI_SEND_REASONING_EFFORT", False),
         thinking_enabled=_bool("CHATWEB_THINKING_ENABLED", True),

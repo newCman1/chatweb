@@ -164,6 +164,7 @@ Acceptance:
 10. Done: Add DeepSeek default provider profile (`deepseek-chat` / `deepseek-reasoner`) with per-request model switch by `enableThinking`.
 11. Done: Add user-level runtime API settings (API key/baseUrl/model) and optional web-search toggle in desktop composer.
 12. Done: Add text attachment upload in composer and pass attachments to backend provider context.
+13. Done: Add configurable web-search provider (`duckduckgo` / `searxng` / `serpapi` / `tavily`) in backend config.
 
 ## 9. Change History
 Use Git history for all detailed corrections and timeline:
