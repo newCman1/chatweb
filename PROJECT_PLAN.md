@@ -173,3 +173,43 @@ Use Git history for all detailed corrections and timeline:
 ```bash
 git log --oneline --decorate --graph
 ```
+
+## 10. Supervisor Reference Mode (Primary + Worker)
+
+### Agreed Usage Rules (2026-03-08)
+- User only talks to **Primary AI** in supervisor flow.
+- Worker AI is assigned internally by Primary AI; user does not need to choose worker per task.
+- If `plan` is provided in `POST /api/supervisor/run`, Primary AI follows it as task list first.
+- If `plan` is empty, Primary AI auto-generates task list from `objective`.
+- Both Primary/Worker must consume the same shared conversation history for the target `conversationId`.
+
+### Control and Stop Rules (Current Stage)
+- Current supervisor API is synchronous run-to-completion per request.
+- There is no dedicated supervisor abort endpoint yet.
+- Practical stop control for now:
+  - lower `maxTasks`
+  - set `maxRetries=0`
+- Planned next upgrade: async run queue + `POST /api/supervisor/run/{run_id}/abort`.
+
+### Provider Compatibility Rule
+- Primary and Worker both use OpenAI-compatible provider contracts (`/chat/completions` streaming).
+- They can point to same or different providers/models via:
+  - `CHATWEB_SUPERVISOR_PRIMARY_*`
+  - `CHATWEB_SUPERVISOR_WORKER_*`
+
+## 11. Plan Status Snapshot (as of 2026-03-08)
+
+### Completed
+- Desktop chat UI (conversation list, stream reply, stop, thinking display/toggle).
+- Frontend adapter split (`mock` / `sse`) with timeout/retry and history loading.
+- Backend chat API + SSE/binary stream + structured error code contract.
+- Optional real provider integration (OpenAI-compatible, DeepSeek defaults).
+- Text attachment context injection pipeline.
+- Configurable web search provider (`duckduckgo` / `searxng` / `serpapi` / `tavily`).
+- Supervisor API Stage 1 (`/api/supervisor/run`, `/api/supervisor/run/{run_id}`).
+
+### Not Completed Yet
+- Supervisor async execution + interrupt/abort endpoint.
+- Frontend supervisor dashboard/UI (currently backend API first).
+- Durable persistence (current in-memory records, no DB persistence).
+- Mobile-first adaptation and auth/login systems (intentionally out of current scope).
