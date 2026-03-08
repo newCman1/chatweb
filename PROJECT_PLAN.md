@@ -9,14 +9,14 @@
 ## 2. Current Architecture
 - Stack: `Vue 3 + Vite + TypeScript + Pinia + Vue Router`.
 - Layered source structure:
-  - `src/api`: API interface and adapters (mock now, real backend later)
-  - `src/components`: UI building blocks
-  - `src/stores`: state management and interaction flow
-  - `src/types`: shared domain types
-  - `src/views`: page-level composition
-  - `src/router`: route definitions
-  - `src/styles`: global theme and layout tokens
-  - `src/utils`: shared utilities (logging)
+  - `frontend/src/api`: API interface and adapters (mock now, real backend later)
+  - `frontend/src/components`: UI building blocks
+  - `frontend/src/stores`: state management and interaction flow
+  - `frontend/src/types`: shared domain types
+  - `frontend/src/views`: page-level composition
+  - `frontend/src/router`: route definitions
+  - `frontend/src/styles`: global theme and layout tokens
+  - `frontend/src/utils`: shared utilities (logging)
 - Backend layered structure (Python / FastAPI):
   - `backend/app/api`: route/controller layer
   - `backend/app/services`: business and stream orchestration
@@ -47,8 +47,8 @@
 - `ChatInput.vue`: send/stop controls with `Enter` send and `Shift+Enter` newline.
 
 ## 4. Logging Strategy (for debugging)
-- Framework: `loglevel`.
-- Default level: `debug`.
+- Framework: `loglevel` (frontend) and Python `logging` (backend).
+- Supported levels: `debug`, `info`, `warning`, `error`.
 - Logging points:
   - conversation lifecycle: init/create/select/message append
   - stream lifecycle: start/chunk done/abort/error
@@ -57,7 +57,7 @@
 
 ## 5. Next Integration Steps
 - Frontend adapter status:
-  - `SseChatApi` implemented under `src/api`.
+  - `SseChatApi` implemented under `frontend/src/api`.
   - API injection supports environment-based switch (`mock` / `sse`).
 - Add persistence strategy (server first, optional local fallback).
 - Stream transport is selectable by situation:
@@ -85,18 +85,22 @@ winget install -e --id OpenJS.NodeJS.LTS --accept-package-agreements --accept-so
 ```
 2. Install dependencies:
 ```powershell
+cd frontend
 npm install --no-audit --no-fund
 ```
 3. Run development server:
 ```powershell
+cd frontend
 npm run dev
 ```
 4. Run tests:
 ```powershell
+cd frontend
 npm run test
 ```
 5. Run production build:
 ```powershell
+cd frontend
 npm run build
 ```
 
@@ -171,3 +175,4 @@ Acceptance:
 - 2026-03-08: Added frontend API retry/timeout strategy and tests for retry/history behavior.
 - 2026-03-08: Completed Stage C baseline (CI workflow, Playwright smoke, log redaction, env layering).
 - 2026-03-08: Added backend XML logging config loading (`backend/logging.xml`) with startup initialization.
+- 2026-03-08: Migrated frontend root into `frontend/` and aligned docs/skills/CI paths.

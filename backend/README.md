@@ -29,6 +29,7 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 - Logger includes route + service events.
 - Sensitive fields are redacted (`authorization`, `token`, `password`, `secret`, `api_key`).
 - Log level is controlled by `CHATWEB_LOG_LEVEL`.
+- Supported levels: `DEBUG`, `INFO`, `WARNING`, `ERROR`.
 - You can also configure logging from XML:
   - file: `backend/logging.xml`
   - loaded automatically on startup

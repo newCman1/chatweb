@@ -8,18 +8,18 @@ ChatWeb is a desktop-first ChatGPT-style project.
 ## Project Layout
 
 ```text
-src/                      frontend app
+frontend/                 frontend app
 backend/                  python backend app
 .trae/skills/             project skills (frontend/backend/git)
 PROJECT_PLAN.md           project plan and progress
 ```
 
 Frontend layers:
-- `src/api`: frontend API adapters (`mock` and `sse`)
-- `src/stores`: state management
-- `src/components`: UI components
-- `src/views`: page composition
-- `src/types`: shared frontend types
+- `frontend/src/api`: frontend API adapters (`mock` and `sse`)
+- `frontend/src/stores`: state management
+- `frontend/src/components`: UI components
+- `frontend/src/views`: page composition
+- `frontend/src/types`: shared frontend types
 
 Backend layers:
 - `backend/app/api`: route/controller layer
@@ -34,6 +34,7 @@ Backend layers:
 Requirements: Node.js 24+ (verified with `v24.14.0`)
 
 ```bash
+cd frontend
 npm install --no-audit --no-fund
 npm run dev
 ```
@@ -41,6 +42,7 @@ npm run dev
 Run tests and build:
 
 ```bash
+cd frontend
 npm run test
 npm run build
 npm run test:e2e
@@ -115,14 +117,16 @@ GitHub Actions workflow: `.github/workflows/ci.yml`
 - Backend: pytest API smoke
 
 Playwright smoke spec:
-- `tests/e2e/chat-smoke.spec.ts`
+- `frontend/tests/e2e/chat-smoke.spec.ts`
 
 ## Logging and Redaction
 
 - Frontend logger redacts sensitive keys in structured context:
   - `authorization`, `token`, `password`, `secret`, `apiKey`, `api_key`
+- Frontend log levels: `debug`, `info`, `warning` (`warn` alias), `error`
 - Backend logger redacts:
   - `authorization`, `token`, `password`, `secret`, `api_key`, `apikey`
+- Backend log levels: `debug`, `info`, `warning`, `error`
 - Backend logging can be initialized from `backend/logging.xml` on startup.
 
 ## Current Status
