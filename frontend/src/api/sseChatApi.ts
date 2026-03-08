@@ -66,6 +66,7 @@ export class SseChatApi implements IChatApi {
           body: JSON.stringify({
             conversationId: input.conversationId,
             content,
+            enableThinking: Boolean(input.enableThinking),
             streamFormat: this.streamFormat
           }),
           signal: controller.signal

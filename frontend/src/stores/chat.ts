@@ -11,15 +11,22 @@ interface ChatState {
   activeAbortController: AbortController | null;
   errorText: string | null;
   showThinking: boolean;
+  enableDeepThinking: boolean;
 }
 
 const uid = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
 const THINKING_PREF_KEY = "chatweb.showThinking";
+const DEEP_THINKING_PREF_KEY = "chatweb.enableDeepThinking";
 
 function loadThinkingPreference(): boolean {
   if (typeof window === "undefined") return false;
   return window.localStorage.getItem(THINKING_PREF_KEY) === "1";
+}
+
+function loadDeepThinkingPreference(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(DEEP_THINKING_PREF_KEY) === "1";
 }
 
 export const useChatStore = defineStore("chat", {
@@ -29,7 +36,8 @@ export const useChatStore = defineStore("chat", {
     activeAssistantMessageId: null,
     activeAbortController: null,
     errorText: null,
-    showThinking: loadThinkingPreference()
+    showThinking: loadThinkingPreference(),
+    enableDeepThinking: loadDeepThinkingPreference()
   }),
   actions: {
     async send(content: string) {
@@ -78,6 +86,7 @@ export const useChatStore = defineStore("chat", {
         const stream = chatApi.streamReply({
           conversationId,
           messages: conversationStore.messagesByConversation[conversationId],
+          enableThinking: this.enableDeepThinking,
           signal: this.activeAbortController.signal
         });
         for await (const chunk of stream) {
@@ -138,6 +147,12 @@ export const useChatStore = defineStore("chat", {
       this.showThinking = show;
       if (typeof window !== "undefined") {
         window.localStorage.setItem(THINKING_PREF_KEY, show ? "1" : "0");
+      }
+    },
+    setEnableDeepThinking(enable: boolean) {
+      this.enableDeepThinking = enable;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(DEEP_THINKING_PREF_KEY, enable ? "1" : "0");
       }
     }
   }

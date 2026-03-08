@@ -3,6 +3,7 @@ import type { Conversation, Message, StreamChunk } from "@/types/chat";
 export interface StreamReplyInput {
   conversationId: string;
   messages: Message[];
+  enableThinking?: boolean;
   signal?: AbortSignal;
 }
 

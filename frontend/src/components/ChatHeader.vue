@@ -2,15 +2,22 @@
 const props = defineProps<{
   title: string;
   showThinking: boolean;
+  enableDeepThinking: boolean;
 }>();
 
 const emit = defineEmits<{
   "update:showThinking": [value: boolean];
+  "update:enableDeepThinking": [value: boolean];
 }>();
 
 function onToggleThinking(event: Event) {
   const target = event.target as HTMLInputElement;
   emit("update:showThinking", target.checked);
+}
+
+function onToggleDeepThinking(event: Event) {
+  const target = event.target as HTMLInputElement;
+  emit("update:enableDeepThinking", target.checked);
 }
 </script>
 
@@ -40,6 +47,12 @@ function onToggleThinking(event: Event) {
         <input type="checkbox" :checked="showThinking" @change="onToggleThinking" />
         <span class="toggle-slider"></span>
         <span class="toggle-text">Show thinking</span>
+      </label>
+
+      <label class="thinking-toggle deep-thinking-toggle">
+        <input type="checkbox" :checked="enableDeepThinking" @change="onToggleDeepThinking" />
+        <span class="toggle-slider"></span>
+        <span class="toggle-text">Deep thinking</span>
       </label>
     </div>
   </header>
@@ -231,5 +244,10 @@ function onToggleThinking(event: Event) {
 
 .toggle-text {
   font-weight: 500;
+}
+
+.deep-thinking-toggle input:checked + .toggle-slider {
+  background: var(--success);
+  border-color: var(--success);
 }
 </style>

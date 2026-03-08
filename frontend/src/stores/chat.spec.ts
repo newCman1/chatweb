@@ -12,6 +12,8 @@ const delay = (ms: number) =>
   });
 
 class StreamingApiStub implements IChatApi {
+  lastInput: StreamReplyInput | null = null;
+
   async listConversations() {
     return [];
   }
@@ -31,6 +33,7 @@ class StreamingApiStub implements IChatApi {
   }
 
   async *streamReply(input: StreamReplyInput): AsyncGenerator<StreamChunk> {
+    this.lastInput = input;
     const chunks = ["A", "B", "C"];
     for (const chunk of chunks) {
       if (input.signal?.aborted) {
@@ -48,9 +51,12 @@ class StreamingApiStub implements IChatApi {
 }
 
 describe("chat store", () => {
+  let apiStub: StreamingApiStub;
+
   beforeEach(() => {
     setActivePinia(createPinia());
-    setChatApi(new StreamingApiStub());
+    apiStub = new StreamingApiStub();
+    setChatApi(apiStub);
     window.localStorage.clear();
   });
 
@@ -86,5 +92,18 @@ describe("chat store", () => {
     expect(window.localStorage.getItem("chatweb.showThinking")).toBe("1");
     chatStore.setShowThinking(false);
     expect(window.localStorage.getItem("chatweb.showThinking")).toBe("0");
+  });
+
+  it("sends deep thinking preference to api", async () => {
+    const conversationStore = useConversationStore();
+    await conversationStore.createConversation();
+    const chatStore = useChatStore();
+    chatStore.setEnableDeepThinking(true);
+    await chatStore.send("need deep thinking");
+    expect(apiStub.lastInput?.enableThinking).toBe(true);
+
+    chatStore.setEnableDeepThinking(false);
+    await chatStore.send("no deep thinking");
+    expect(apiStub.lastInput?.enableThinking).toBe(false);
   });
 });

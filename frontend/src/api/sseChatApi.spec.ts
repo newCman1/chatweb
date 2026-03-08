@@ -39,10 +39,12 @@ describe("SseChatApi", () => {
     ];
 
     const out: string[] = [];
-    for await (const chunk of api.streamReply({ conversationId: "c1", messages })) {
+    for await (const chunk of api.streamReply({ conversationId: "c1", messages, enableThinking: true })) {
       if (chunk.delta) out.push(chunk.delta);
     }
     expect(out.join("")).toBe("hello world");
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string) as { enableThinking?: boolean };
+    expect(body.enableThinking).toBe(true);
   });
 
   it("parses thinking events from sse stream", async () => {

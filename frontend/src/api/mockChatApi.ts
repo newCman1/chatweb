@@ -74,15 +74,17 @@ export class MockChatApi implements IChatApi {
     const chunks = splitToChunks(fullText);
 
     try {
-      for (const chunk of thinkingChunks) {
-        if (external?.aborted || internal.signal.aborted) {
-          logger.warn("api.stream.aborted", { conversationId: input.conversationId });
-          const err = new Error("Stream aborted");
-          err.name = "AbortError";
-          throw err;
+      if (input.enableThinking) {
+        for (const chunk of thinkingChunks) {
+          if (external?.aborted || internal.signal.aborted) {
+            logger.warn("api.stream.aborted", { conversationId: input.conversationId });
+            const err = new Error("Stream aborted");
+            err.name = "AbortError";
+            throw err;
+          }
+          yield { delta: "", thinkingDelta: chunk };
+          await wait(this.tokenDelayMs);
         }
-        yield { delta: "", thinkingDelta: chunk };
-        await wait(this.tokenDelayMs);
       }
       for (const chunk of chunks) {
         if (external?.aborted || internal.signal.aborted) {
