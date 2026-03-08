@@ -61,8 +61,8 @@ function formatTime(isoString: string): string {
 
 <style scoped>
 .chat-sidebar {
-  background: #fff;
-  border: 1px solid var(--border);
+  background: linear-gradient(180deg, #f8fbff 0%, #f1f5f9 100%);
+  border: 1px solid #d4deea;
   border-radius: 14px;
   padding: 16px;
   display: flex;
@@ -101,36 +101,44 @@ function formatTime(isoString: string): string {
 
 .conversation-list {
   list-style: none;
-  padding: 0;
+  padding: 8px;
   margin: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
   overflow-y: auto;
   flex: 1;
+  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid #d9e2ee;
+  border-radius: 12px;
 }
 
 .conversation-btn {
   width: 100%;
-  border: 1px solid transparent;
+  border: 1px solid #dce4ef;
   border-radius: 10px;
   padding: 10px 12px;
-  background: transparent;
+  background: #fff;
   text-align: left;
   display: flex;
   flex-direction: column;
   gap: 4px;
   cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast),
+    box-shadow var(--transition-fast), transform var(--transition-fast);
 }
 
 .conversation-btn:hover {
-  background: var(--bg-soft);
-  border-color: var(--border);
+  background: #f8fbff;
+  border-color: #c7d7ea;
+  box-shadow: 0 1px 0 rgba(148, 163, 184, 0.16);
+  transform: translateY(-1px);
 }
 
 .conversation-btn.active {
-  background: var(--brand-soft);
-  border-color: #bfdbfe;
+  background: #eaf3ff;
+  border-color: #8eb9ff;
+  box-shadow: inset 0 0 0 1px #9ec5ff;
 }
 
 .title {
@@ -144,7 +152,7 @@ function formatTime(isoString: string): string {
 
 .time {
   font-size: 11px;
-  color: var(--text-tertiary);
+  color: #64748b;
 }
 
 .empty-text {
