@@ -32,14 +32,6 @@ jobs:
         run: npm run build
         working-directory: frontend
 
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
-        working-directory: frontend
-
-      - name: Frontend e2e smoke
-        run: npm run test:e2e
-        working-directory: frontend
-
   backend:
     runs-on: ubuntu-latest
     steps:

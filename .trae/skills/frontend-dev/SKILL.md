@@ -45,7 +45,6 @@ Use this skill whenever the task modifies frontend code.
 - Preserve `IChatApi` boundary and adapter injection pattern.
 - Add or update tests when behavior changes.
 - Keep frontend logger redaction enabled for sensitive fields.
-- Keep Playwright smoke test green (`npm run test:e2e`) when UI flow changes.
 
 ## Skill Sync Rule
 

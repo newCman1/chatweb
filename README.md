@@ -45,7 +45,6 @@ Run tests and build:
 cd frontend
 npm run test
 npm run build
-npm run test:e2e
 ```
 
 ## Backend Run
@@ -109,15 +108,12 @@ npm run dev
 - `POST /api/chat/stream`
 - `POST /api/chat/abort`
 
-## CI and Smoke Test
+## CI
 
 GitHub Actions workflow: `.github/workflows/ci.yml`
 
-- Frontend: unit tests + build + Playwright smoke
+- Frontend: unit tests + build
 - Backend: pytest API smoke
-
-Playwright smoke spec:
-- `frontend/tests/e2e/chat-smoke.spec.ts`
 
 ## Logging and Redaction
 
@@ -136,4 +132,4 @@ Playwright smoke spec:
 - Frontend loads server history via `listMessages` on init/select
 - Frontend API includes timeout + retry strategy
 - Backend FastAPI layered skeleton is implemented
-- CI + e2e smoke + log redaction baseline is implemented
+- CI + log redaction baseline is implemented
