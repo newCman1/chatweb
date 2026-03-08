@@ -61,15 +61,61 @@ D:\Git\bin\git.exe remote -v
 
 ### 5. Stage and Commit Changes
 
+#### Best Practice: Incremental Commits
+Make small, focused commits for better version control and easier rollback:
+
 ```bash
 # Check current status
 D:\Git\bin\git.exe status
 
-# Stage all changes
-D:\Git\bin\git.exe add .
+# Stage specific files for a focused commit
+D:\Git\bin\git.exe add src/components/ChatSidebar.vue
+D:\Git\bin\git.exe commit -m "feat(ui): redesign sidebar with icons and smart time formatting"
 
-# Commit with message
-D:\Git\bin\git.exe commit -m "Your commit message"
+# Stage another set of changes
+D:\Git\bin\git.exe add src/components/MessageBubble.vue
+D:\Git\bin\git.exe commit -m "feat(ui): add avatars and timestamps to message bubbles"
+
+# Or stage all remaining changes
+D:\Git\bin\git.exe add .
+D:\Git\bin\git.exe commit -m "feat(ui): update global styles and animations"
+```
+
+#### Commit Message Format (Conventional Commits)
+Use English commit messages with conventional format:
+
+```
+<type>(<scope>): <description>
+
+[optional body]
+
+[optional footer]
+```
+
+**Types:**
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `style`: Code style changes (formatting, no logic change)
+- `refactor`: Code refactoring
+- `test`: Adding or updating tests
+- `chore`: Build process or auxiliary tool changes
+
+**Examples:**
+```bash
+# Feature commits
+D:\Git\bin\git.exe commit -m "feat(ui): add typing indicator animation"
+D:\Git\bin\git.exe commit -m "feat(api): implement SSE chat adapter"
+
+# Fix commits
+D:\Git\bin\git.exe commit -m "fix(chat): resolve scroll to bottom issue"
+D:\Git\bin\git.exe commit -m "fix(style): correct message bubble alignment"
+
+# Documentation
+D:\Git\bin\git.exe commit -m "docs(readme): add setup instructions"
+
+# Refactoring
+D:\Git\bin\git.exe commit -m "refactor(stores): extract conversation logic"
 ```
 
 ### 6. Push to GitHub
