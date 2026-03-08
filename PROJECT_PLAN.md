@@ -20,63 +20,31 @@
 
 ## 3. Frontend Milestones
 
-### ✅ Completed
-
-1. **Desktop shell complete**:
-   - Sidebar conversation list with icons and smart time formatting
-   - Main chat area with message list and avatars
-   - Input area with send/stop actions and formatting toolbar
-
-2. **Stream flow complete**:
+### Completed
+1. Desktop shell:
+   - Sidebar conversation list
+   - Chat header and message area
+   - Input area with send and stop controls
+2. Stream flow:
    - Optimistic user message append
-   - Assistant streaming chunks append with typing indicator
-   - Stop generation handling and error state
-   - Message timestamps and status indicators
-
-3. **UI/UX Enhancements** (2026-03-08):
-   - Modern color system with CSS variables
-   - Smooth animations and transitions
-   - Responsive design for mobile/desktop
-   - Empty state with suggestion cards
-   - Custom scrollbar styling
-   - Gradient buttons and hover effects
-
-4. **Test baseline**:
-   - Store unit tests for conversation and chat flows
+   - Assistant streaming chunk append
+   - Stop generation and error handling
+3. Test baseline:
+   - Store unit tests for conversation/chat flows
    - Component test for input keyboard behavior
 
 ### Frontend Architecture
-
-**Design System**:
-- Color palette: Modern blue primary (`#3b82f6`), soft grays, semantic colors
-- Typography: System font stack with antialiasing
-- Spacing: 4px grid system
-- Shadows: Layered shadow system (sm/md/lg/xl)
-- Border radius: Consistent rounding (sm/md/lg/xl)
-- Animations: CSS transitions and keyframe animations
-
-**Component Structure**:
-```
-components/
-├── ChatSidebar.vue      # Navigation + conversation list
-├── ChatHeader.vue       # Title + status + actions
-├── MessageList.vue      # Scrollable message container
-├── MessageBubble.vue    # Individual message with avatar
-└── ChatInput.vue        # Input with toolbar
-```
-
-**Key UI Features**:
-- **ChatSidebar**: Header with branding, conversation count, smart time formatting (刚刚/几分钟前/星期几), user info footer
-- **MessageBubble**: Avatar (我/AI), timestamp, status indicator (生成中/失败/已停止), typing animation
-- **ChatInput**: Toolbar with code block and list buttons, focus ring, hint text
-- **MessageList**: Empty state with floating robot icon and suggestion cards
+- `ChatSidebar.vue`: conversation list and create action.
+- `ChatHeader.vue`: active conversation title.
+- `MessageList.vue` + `MessageBubble.vue`: message rendering and auto-scroll behavior.
+- `ChatInput.vue`: send/stop controls with `Enter` send and `Shift+Enter` newline.
 
 ## 4. Logging Strategy (for debugging)
 - Framework: `loglevel`.
 - Default level: `debug`.
 - Logging points:
   - conversation lifecycle: init/create/select/message append
-  - stream lifecycle: start/chunk end/abort/error
+  - stream lifecycle: start/chunk done/abort/error
   - user actions: send/stop
 - Rule: keep logs structured with context object for quick tracing.
 
@@ -85,13 +53,7 @@ components/
 - Replace `setChatApi` injection target in app bootstrap for environment-based adapter selection.
 - Add persistence strategy (server first, optional local fallback).
 
-## 6. Plan Correction Log
-- 2026-03-08: Added top-level project plan document as requested.
-- 2026-03-08: Confirmed layered directory design to avoid single-folder implementation.
-- 2026-03-08: Added structured debug logging framework and integrated key runtime events.
-- 2026-03-08: Installed local Node.js runtime and npm, then completed dependency installation and test validation.
-
-## 7. Environment Setup and Verification
+## 6. Environment Setup and Verification
 - OS: Windows (PowerShell).
 - Package manager used: `winget`.
 - Installed runtime:
@@ -115,24 +77,24 @@ npm run dev
 ```powershell
 npm run test
 ```
+5. Run production build:
+```powershell
+npm run build
+```
 
-### Current Verification Result
+### Current Verification Result (2026-03-08)
 - Dependency installation: success.
 - Unit/component tests: success (`3` files, `6` tests passed).
 - Production build: success (`vite build` completed, `dist/` generated).
+- Dev server: start command can listen on `127.0.0.1:5173`.
 
-## 8. Roadmap (Next 3 Stages)
+## 7. Roadmap (Next 3 Stages)
 
 ### Stage A: Backend Adapter Integration
 - Add `SseChatApi` as a real implementation of `IChatApi`.
 - Keep current UI/store contracts unchanged, only switch API injection.
 - Normalize backend stream payload into `StreamChunk`.
 - Add error mapping (`429/5xx/network`) to unified frontend `errorText`.
-
-Deliverables:
-- `src/api/sseChatApi.ts`
-- Adapter switch in bootstrap (dev: mock, integration: sse)
-- Integration tests for stream success/abort/error paths
 
 Acceptance:
 - Stream reply renders token-by-token from backend.
@@ -146,13 +108,8 @@ Acceptance:
   - append message
   - load history
 - Refresh sidebar from server source of truth on app load.
-- Keep optimistic UI for user send, reconcile with server response ids.
+- Keep optimistic UI for user send and reconcile with server ids.
 - No auth token/session handling in request pipeline.
-
-Deliverables:
-- persistence adapter methods in `IChatApi` implementation
-- store reconciliation logic for server ids/timestamps
-- retry path for transient failures
 
 Acceptance:
 - Refresh page keeps conversation history.
@@ -165,25 +122,23 @@ Acceptance:
 - Add smoke e2e checks for core flow and build/deploy checklist.
 - Keep anonymous access as default product behavior (no login gate).
 
-Deliverables:
-- environment config docs and defaults
-- hardened logger policy
-- CI commands for lint/test/build
-
 Acceptance:
 - One-command validation (`test + build`) passes in CI.
 - Key user flow is covered by automated checks.
 - Logs remain useful for debugging without leaking secrets.
 
-## 9. Immediate Task Queue
+## 8. Immediate Task Queue
 1. Implement `SseChatApi` skeleton and wire adapter switch.
 2. Define backend stream payload contract and parse strategy.
 3. Add conversation history fetch endpoint integration.
 4. Add retry + timeout handling in API layer.
 5. Add integration tests for stream abort/error and history loading.
 
-## 10. Plan Correction Log (Update)
-- 2026-03-08: Extended plan with staged backend integration roadmap and acceptance criteria.
+## 9. Plan Correction Log
+- 2026-03-08: Added top-level project plan document as requested.
+- 2026-03-08: Confirmed layered directory design to avoid single-folder implementation.
+- 2026-03-08: Added structured debug logging framework and integrated key runtime events.
+- 2026-03-08: Installed local Node.js runtime and npm, then completed dependency installation and test/build validation.
 - 2026-03-08: Locked backend strategy to no-login, open access by default.
-- 2026-03-08: Completed comprehensive UI/UX enhancement with modern design system.
-- 2026-03-08: Added git skill with incremental commit best practices and conventional commits guide.
+- 2026-03-08: Repaired plan text corruption and aligned completed items with current source code.
+- 2026-03-08: Re-synced `.trae/skills` to `C:\Users\Lj\.codex\skills` and verified hash consistency.
