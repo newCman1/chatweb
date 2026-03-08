@@ -19,19 +19,57 @@
   - `src/utils`: shared utilities (logging)
 
 ## 3. Frontend Milestones
-1. Desktop shell complete:
-- Sidebar conversation list
-- Main chat area with message list
-- Input area with send and stop actions
 
-2. Stream flow complete:
-- Optimistic user message append
-- Assistant streaming chunks append
-- Stop generation handling and error state
+### ✅ Completed
 
-3. Test baseline:
-- Store unit tests for conversation and chat flows
-- Component test for input keyboard behavior
+1. **Desktop shell complete**:
+   - Sidebar conversation list with icons and smart time formatting
+   - Main chat area with message list and avatars
+   - Input area with send/stop actions and formatting toolbar
+
+2. **Stream flow complete**:
+   - Optimistic user message append
+   - Assistant streaming chunks append with typing indicator
+   - Stop generation handling and error state
+   - Message timestamps and status indicators
+
+3. **UI/UX Enhancements** (2026-03-08):
+   - Modern color system with CSS variables
+   - Smooth animations and transitions
+   - Responsive design for mobile/desktop
+   - Empty state with suggestion cards
+   - Custom scrollbar styling
+   - Gradient buttons and hover effects
+
+4. **Test baseline**:
+   - Store unit tests for conversation and chat flows
+   - Component test for input keyboard behavior
+
+### Frontend Architecture
+
+**Design System**:
+- Color palette: Modern blue primary (`#3b82f6`), soft grays, semantic colors
+- Typography: System font stack with antialiasing
+- Spacing: 4px grid system
+- Shadows: Layered shadow system (sm/md/lg/xl)
+- Border radius: Consistent rounding (sm/md/lg/xl)
+- Animations: CSS transitions and keyframe animations
+
+**Component Structure**:
+```
+components/
+├── ChatSidebar.vue      # Navigation + conversation list
+├── ChatHeader.vue       # Title + status + actions
+├── MessageList.vue      # Scrollable message container
+├── MessageBubble.vue    # Individual message with avatar
+└── ChatInput.vue        # Input with toolbar
+```
+
+**Key UI Features**:
+- **ChatSidebar**: Header with branding, conversation count, smart time formatting (刚刚/几分钟前/星期几), user info footer
+- **MessageBubble**: Avatar (我/AI), timestamp, status indicator (生成中/失败/已停止), typing animation
+- **ChatInput**: Toolbar with code block and list buttons, focus ring, hint text
+- **MessageList**: Empty state with floating robot icon and suggestion cards
 
 ## 4. Logging Strategy (for debugging)
 - Framework: `loglevel`.
@@ -147,3 +185,5 @@ Acceptance:
 ## 10. Plan Correction Log (Update)
 - 2026-03-08: Extended plan with staged backend integration roadmap and acceptance criteria.
 - 2026-03-08: Locked backend strategy to no-login, open access by default.
+- 2026-03-08: Completed comprehensive UI/UX enhancement with modern design system.
+- 2026-03-08: Added git skill with incremental commit best practices and conventional commits guide.
