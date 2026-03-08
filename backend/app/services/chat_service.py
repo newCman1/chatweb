@@ -1,0 +1,160 @@
+import asyncio
+import json
+from collections import defaultdict
+from typing import AsyncGenerator
+from uuid import uuid4
+
+from app.core.config import settings
+from app.models.chat import ConversationRecord, MessageRecord, utc_now_iso
+
+
+def build_assistant_reply(user_text: str) -> str:
+    return (
+        f"你刚刚说的是：{user_text}\n\n"
+        "这是 Python 后端的流式回复示例。你可以直接替换成真实模型调用。"
+    )
+
+
+class ChatService:
+    def __init__(self) -> None:
+        self._conversations: dict[str, ConversationRecord] = {}
+        self._messages: dict[str, list[MessageRecord]] = defaultdict(list)
+        self._active_abort_flags: dict[str, asyncio.Event] = {}
+        self._lock = asyncio.Lock()
+
+    async def list_conversations(self) -> list[ConversationRecord]:
+        async with self._lock:
+            values = list(self._conversations.values())
+        return sorted(values, key=lambda x: x.updated_at, reverse=True)
+
+    async def create_conversation(self) -> ConversationRecord:
+        conversation_id = str(uuid4())
+        now = utc_now_iso()
+        item = ConversationRecord(
+            id=conversation_id,
+            title="新会话",
+            created_at=now,
+            updated_at=now,
+        )
+        async with self._lock:
+            self._conversations[conversation_id] = item
+        return item
+
+    async def list_messages(self, conversation_id: str) -> list[MessageRecord]:
+        async with self._lock:
+            return list(self._messages.get(conversation_id, []))
+
+    async def append_user_message(self, conversation_id: str, content: str) -> MessageRecord:
+        now = utc_now_iso()
+        msg = MessageRecord(
+            id=str(uuid4()),
+            conversation_id=conversation_id,
+            role="user",
+            content=content,
+            status="done",
+            created_at=now,
+        )
+        async with self._lock:
+            if conversation_id not in self._conversations:
+                self._conversations[conversation_id] = ConversationRecord(
+                    id=conversation_id,
+                    title="新会话",
+                    created_at=now,
+                    updated_at=now,
+                )
+            conv = self._conversations[conversation_id]
+            if conv.title == "新会话":
+                conv.title = content.strip()[:24] or "新会话"
+            conv.updated_at = now
+            self._messages[conversation_id].append(msg)
+        return msg
+
+    async def create_assistant_message_placeholder(self, conversation_id: str) -> MessageRecord:
+        msg = MessageRecord(
+            id=str(uuid4()),
+            conversation_id=conversation_id,
+            role="assistant",
+            content="",
+            status="streaming",
+            created_at=utc_now_iso(),
+        )
+        async with self._lock:
+            self._messages[conversation_id].append(msg)
+        return msg
+
+    async def abort(self, conversation_id: str) -> None:
+        flag = self._active_abort_flags.get(conversation_id)
+        if flag:
+            flag.set()
+
+    async def stream_json(
+        self, conversation_id: str, user_content: str
+    ) -> AsyncGenerator[str, None]:
+        abort_flag = asyncio.Event()
+        self._active_abort_flags[conversation_id] = abort_flag
+        assistant = await self.create_assistant_message_placeholder(conversation_id)
+        chunks = build_assistant_reply(user_content).split(" ")
+        try:
+            for chunk in chunks:
+                if abort_flag.is_set():
+                    await self._mark_stopped(conversation_id, assistant.id)
+                    yield "event: done\ndata: " + json.dumps({"stopped": True}) + "\n\n"
+                    return
+
+                await self._append_assistant_text(conversation_id, assistant.id, chunk + " ")
+                payload = {"delta": chunk + " "}
+                yield "event: chunk\ndata: " + json.dumps(payload, ensure_ascii=False) + "\n\n"
+                await asyncio.sleep(settings.token_delay_seconds)
+
+            await self._mark_done(conversation_id, assistant.id)
+            yield "event: done\ndata: " + json.dumps({"done": True}) + "\n\n"
+        finally:
+            self._active_abort_flags.pop(conversation_id, None)
+
+    async def stream_binary(
+        self, conversation_id: str, user_content: str
+    ) -> AsyncGenerator[bytes, None]:
+        abort_flag = asyncio.Event()
+        self._active_abort_flags[conversation_id] = abort_flag
+        assistant = await self.create_assistant_message_placeholder(conversation_id)
+        chunks = build_assistant_reply(user_content).split(" ")
+        try:
+            for chunk in chunks:
+                if abort_flag.is_set():
+                    await self._mark_stopped(conversation_id, assistant.id)
+                    return
+                content = (chunk + " ").encode("utf-8")
+                await self._append_assistant_text(conversation_id, assistant.id, chunk + " ")
+                yield content
+                await asyncio.sleep(settings.token_delay_seconds)
+            await self._mark_done(conversation_id, assistant.id)
+        finally:
+            self._active_abort_flags.pop(conversation_id, None)
+
+    async def _append_assistant_text(
+        self, conversation_id: str, message_id: str, delta: str
+    ) -> None:
+        async with self._lock:
+            messages = self._messages.get(conversation_id, [])
+            target = next((msg for msg in messages if msg.id == message_id), None)
+            if target:
+                target.content += delta
+                target.status = "streaming"
+                self._conversations[conversation_id].updated_at = utc_now_iso()
+
+    async def _mark_done(self, conversation_id: str, message_id: str) -> None:
+        async with self._lock:
+            for msg in self._messages.get(conversation_id, []):
+                if msg.id == message_id:
+                    msg.status = "done"
+                    break
+
+    async def _mark_stopped(self, conversation_id: str, message_id: str) -> None:
+        async with self._lock:
+            for msg in self._messages.get(conversation_id, []):
+                if msg.id == message_id:
+                    msg.status = "stopped"
+                    break
+
+
+chat_service = ChatService()

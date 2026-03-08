@@ -17,6 +17,13 @@
   - `src/router`: route definitions
   - `src/styles`: global theme and layout tokens
   - `src/utils`: shared utilities (logging)
+- Backend layered structure (Python / FastAPI):
+  - `backend/app/api`: route/controller layer
+  - `backend/app/services`: business and stream orchestration
+  - `backend/app/models`: internal records
+  - `backend/app/schemas`: DTO/request/response schema
+  - `backend/app/db`: persistence abstraction placeholder
+  - `backend/app/core`: config/shared infrastructure
 
 ## 3. Frontend Milestones
 
@@ -49,9 +56,12 @@
 - Rule: keep logs structured with context object for quick tracing.
 
 ## 5. Next Integration Steps
-- Implement real backend adapter (SSE or chunked HTTP) under `src/api`.
+- Implement frontend `SseChatApi` adapter under `src/api`.
 - Replace `setChatApi` injection target in app bootstrap for environment-based adapter selection.
 - Add persistence strategy (server first, optional local fallback).
+- Stream transport can be selected by situation:
+  - `json`: SSE (`text/event-stream`) for browser-native incremental rendering.
+  - `binary`: chunked `application/octet-stream` for binary-oriented transport/debug.
 
 ## 6. Environment Setup and Verification
 - OS: Windows (PowerShell).
@@ -128,10 +138,10 @@ Acceptance:
 - Logs remain useful for debugging without leaking secrets.
 
 ## 8. Immediate Task Queue
-1. Implement `SseChatApi` skeleton and wire adapter switch.
-2. Define backend stream payload contract and parse strategy.
-3. Add conversation history fetch endpoint integration.
-4. Add retry + timeout handling in API layer.
+1. Implement `SseChatApi` in frontend and wire adapter switch.
+2. Define frontend parsing rules for `json` and `binary` stream mode.
+3. Add conversation history fetch integration from Python backend endpoints.
+4. Add retry + timeout handling in frontend API layer.
 5. Add integration tests for stream abort/error and history loading.
 
 ## 9. Plan Correction Log
@@ -142,3 +152,6 @@ Acceptance:
 - 2026-03-08: Locked backend strategy to no-login, open access by default.
 - 2026-03-08: Repaired plan text corruption and aligned completed items with current source code.
 - 2026-03-08: Re-synced `.trae/skills` to `C:\Users\Lj\.codex\skills` and verified hash consistency.
+- 2026-03-08: Added Python backend layered skeleton aligned with frontend layering for easier troubleshooting.
+- 2026-03-08: Added dual stream transport plan (`json` SSE / `binary` chunked) per runtime needs.
+- 2026-03-08: Added dedicated frontend/backend skills so each side can be developed without repeatedly reading the full project plan.
