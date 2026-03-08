@@ -56,7 +56,7 @@ function onToggleDeepThinking(event: Event) {
     <div class="compose-options">
       <label class="thinking-toggle">
         <input type="checkbox" :checked="enableDeepThinking" @change="onToggleDeepThinking" />
-        <span class="toggle-text">启用深度思考</span>
+        <span class="toggle-text">Enable deep thinking</span>
       </label>
     </div>
 
