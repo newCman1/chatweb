@@ -177,7 +177,14 @@ class ChatService:
                     "stream.provider.failed",
                     {"conversation_id": conversation_id, "error": str(error)},
                 )
-                raise
+                if not settings.ai_fallback_on_error:
+                    raise
+                log_event(
+                    self._logger,
+                    logging.WARNING,
+                    "stream.provider.fallback",
+                    {"conversation_id": conversation_id},
+                )
 
         if settings.thinking_enabled:
             for token in build_thinking_summary(user_content).split(" "):

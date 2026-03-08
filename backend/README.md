@@ -85,6 +85,7 @@ Backend is open-access by default and does not require login. If you set API key
 - `CHATWEB_AI_TIMEOUT_SECONDS` (default: `60`)
 - `CHATWEB_AI_REASONING_EFFORT` (default: `medium`)
 - `CHATWEB_THINKING_ENABLED` (default: `true`, for fallback stream)
+- `CHATWEB_AI_FALLBACK_ON_ERROR` (default: `true`, fallback to local mock stream if provider call fails)
 
 ## Tests
 

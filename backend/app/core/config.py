@@ -44,6 +44,7 @@ class Settings:
     ai_timeout_seconds: float
     ai_reasoning_effort: str
     thinking_enabled: bool
+    ai_fallback_on_error: bool
 
 
 def load_settings() -> Settings:
@@ -60,6 +61,7 @@ def load_settings() -> Settings:
         ai_timeout_seconds=_float("CHATWEB_AI_TIMEOUT_SECONDS", 60.0),
         ai_reasoning_effort=os.getenv("CHATWEB_AI_REASONING_EFFORT", "medium"),
         thinking_enabled=_bool("CHATWEB_THINKING_ENABLED", True),
+        ai_fallback_on_error=_bool("CHATWEB_AI_FALLBACK_ON_ERROR", True),
     )
 
 

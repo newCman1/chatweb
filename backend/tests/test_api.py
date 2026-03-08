@@ -1,6 +1,8 @@
+import httpx
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.services import chat_service as chat_service_module
 
 
 client = TestClient(app)
@@ -36,3 +38,28 @@ def test_conversation_and_stream_json():
     assistant = next((m for m in messages.json()["messages"] if m["role"] == "assistant"), None)
     assert assistant is not None
     assert "thinking" in assistant
+
+
+def test_stream_fallback_when_provider_fails(monkeypatch):
+    async def failing_stream(_messages):
+        raise httpx.HTTPError("provider down")
+        yield ("answer", "")
+
+    monkeypatch.setattr(chat_service_module.ai_client, "_api_key", "dummy-key")
+    monkeypatch.setattr(chat_service_module.ai_client, "stream_chat", failing_stream)
+
+    create = client.post("/api/conversations")
+    assert create.status_code == 200
+    conversation_id = create.json()["conversation"]["id"]
+
+    stream_response = client.post(
+        "/api/chat/stream",
+        json={
+            "conversationId": conversation_id,
+            "content": "fallback test",
+            "streamFormat": "json",
+        },
+    )
+    assert stream_response.status_code == 200
+    assert "event: chunk" in stream_response.text
+    assert "event: done" in stream_response.text

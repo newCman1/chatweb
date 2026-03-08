@@ -40,6 +40,7 @@ Use this skill whenever the task modifies backend code.
 - Optional real model provider is configured by:
   - `CHATWEB_AI_API_KEY`, `CHATWEB_AI_MODEL`, `CHATWEB_AI_BASE_URL`
   - fallback to local mock stream when API key is empty
+  - `CHATWEB_AI_FALLBACK_ON_ERROR` controls fallback when provider call fails
 
 ## Delivery Rules
 

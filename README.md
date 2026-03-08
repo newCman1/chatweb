@@ -119,6 +119,7 @@ If you configure an API key, backend will stream from an OpenAI-compatible `/cha
 - `CHATWEB_AI_TIMEOUT_SECONDS=60`
 - `CHATWEB_AI_REASONING_EFFORT=medium`
 - `CHATWEB_THINKING_ENABLED=true` (fallback/mock thinking stream switch)
+- `CHATWEB_AI_FALLBACK_ON_ERROR=true` (fallback to local mock stream when provider call fails)
 
 ## CI
 
