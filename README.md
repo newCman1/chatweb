@@ -149,12 +149,17 @@ Error response contract (non-stream endpoints):
 If you configure an API key, backend will stream from an OpenAI-compatible `/chat/completions` endpoint. Without key, it falls back to built-in mock stream.
 
 - `CHATWEB_AI_API_KEY=`
-- `CHATWEB_AI_MODEL=gpt-4.1-mini`
-- `CHATWEB_AI_BASE_URL=https://api.openai.com/v1`
+- `CHATWEB_AI_BASE_URL=https://api.deepseek.com/v1`
+- `CHATWEB_AI_MODEL=deepseek-chat` (normal mode)
+- `CHATWEB_AI_REASONING_MODEL=deepseek-reasoner` (deep thinking mode)
 - `CHATWEB_AI_TIMEOUT_SECONDS=60`
+- `CHATWEB_AI_HTTP_TRUST_ENV=false` (do not inherit system proxy by default)
 - `CHATWEB_AI_REASONING_EFFORT=medium`
+- `CHATWEB_AI_SEND_REASONING_EFFORT=false` (DeepSeek default: disabled)
 - `CHATWEB_THINKING_ENABLED=true` (fallback/mock thinking stream switch)
 - `CHATWEB_AI_FALLBACK_ON_ERROR=true` (fallback to local mock stream when provider call fails)
+
+DeepSeek is now the default profile in `backend/.env.development` and `backend/.env.production`.
 
 ## CI
 

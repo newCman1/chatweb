@@ -89,13 +89,22 @@ Request example:
 
 Backend is open-access by default and does not require login. If you set API key env vars, it will call an OpenAI-compatible API; otherwise it uses local mock streaming.
 
+DeepSeek defaults:
 - `CHATWEB_AI_API_KEY`
-- `CHATWEB_AI_MODEL` (default: `gpt-4.1-mini`)
-- `CHATWEB_AI_BASE_URL` (default: `https://api.openai.com/v1`)
+- `CHATWEB_AI_BASE_URL` (default: `https://api.deepseek.com/v1`)
+- `CHATWEB_AI_MODEL` (default: `deepseek-chat`, used when deep thinking is off)
+- `CHATWEB_AI_REASONING_MODEL` (default: `deepseek-reasoner`, used when deep thinking is on)
 - `CHATWEB_AI_TIMEOUT_SECONDS` (default: `60`)
+- `CHATWEB_AI_HTTP_TRUST_ENV` (default: `false`, disable inherited `http_proxy/https_proxy` unless you explicitly need proxy)
 - `CHATWEB_AI_REASONING_EFFORT` (default: `medium`)
+- `CHATWEB_AI_SEND_REASONING_EFFORT` (default: `false`, disabled for DeepSeek compatibility by default)
 - `CHATWEB_THINKING_ENABLED` (default: `true`, for fallback stream)
 - `CHATWEB_AI_FALLBACK_ON_ERROR` (default: `true`, fallback to local mock stream if provider call fails)
+
+If you use OpenAI or another compatible provider, set:
+- `CHATWEB_AI_BASE_URL=https://api.openai.com/v1`
+- `CHATWEB_AI_MODEL=<your-model>`
+- `CHATWEB_AI_REASONING_MODEL=<your-reasoning-model-or-same-model>`
 
 ## Error Response Contract
 

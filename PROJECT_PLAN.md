@@ -161,6 +161,7 @@ Acceptance:
 7. Done: Add log redaction in frontend and backend logger pipeline.
 8. Done: Add environment profile files for frontend and backend.
 9. Done: Add optional OpenAI-compatible backend provider adapter and thinking stream.
+10. Done: Add DeepSeek default provider profile (`deepseek-chat` / `deepseek-reasoner`) with per-request model switch by `enableThinking`.
 
 ## 9. Plan Correction Log
 - 2026-03-08: Added top-level project plan document as requested.
@@ -181,3 +182,5 @@ Acceptance:
 - 2026-03-08: Migrated frontend root into `frontend/` and aligned docs/skills/CI paths.
 - 2026-03-08: Added thinking stream (`event: thinking`) end-to-end and desktop UI toggle for optional display.
 - 2026-03-08: Added optional OpenAI-compatible backend adapter via `CHATWEB_AI_*` config, with mock fallback.
+- 2026-03-08: Switched default AI profile to DeepSeek and split normal/reasoning models for the deep-thinking toggle path.
+- 2026-03-08: Fixed DeepSeek connectivity by adding `CHATWEB_AI_HTTP_TRUST_ENV` (default `false`) to avoid inherited proxy-caused `httpx.ConnectError`.

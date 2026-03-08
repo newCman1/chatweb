@@ -40,7 +40,11 @@ Use this skill whenever the task modifies backend code.
 - `POST /api/chat/stream` request must support:
   - `enableThinking: true|false` (user-controlled deep thinking switch)
 - Optional real model provider is configured by:
-  - `CHATWEB_AI_API_KEY`, `CHATWEB_AI_MODEL`, `CHATWEB_AI_BASE_URL`
+  - `CHATWEB_AI_API_KEY`, `CHATWEB_AI_BASE_URL`
+  - `CHATWEB_AI_MODEL` (normal chat model)
+  - `CHATWEB_AI_REASONING_MODEL` (deep-thinking model)
+  - `CHATWEB_AI_HTTP_TRUST_ENV` (default `false` to avoid unexpected proxy issues)
+  - `CHATWEB_AI_SEND_REASONING_EFFORT` (default `false` for DeepSeek)
   - fallback to local mock stream when API key is empty
   - `CHATWEB_AI_FALLBACK_ON_ERROR` controls fallback when provider call fails
 

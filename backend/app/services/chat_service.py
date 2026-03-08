@@ -279,7 +279,7 @@ class ChatService:
         if ai_client.enabled:
             history = await self._build_provider_messages(conversation_id)
             try:
-                async for event_type, delta in ai_client.stream_chat(history):
+                async for event_type, delta in ai_client.stream_chat(history, enable_thinking=enable_thinking):
                     if event_type == "thinking" and not enable_thinking:
                         continue
                     yield (event_type, delta)
