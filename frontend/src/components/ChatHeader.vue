@@ -1,17 +1,7 @@
 <script setup lang="ts">
-const props = defineProps<{
+defineProps<{
   title: string;
-  enableDeepThinking: boolean;
 }>();
-
-const emit = defineEmits<{
-  "update:enableDeepThinking": [value: boolean];
-}>();
-
-function onToggleDeepThinking(event: Event) {
-  const target = event.target as HTMLInputElement;
-  emit("update:enableDeepThinking", target.checked);
-}
 </script>
 
 <template>
@@ -22,7 +12,7 @@ function onToggleDeepThinking(event: Event) {
         <div class="icon-glow"></div>
       </div>
       <div class="header-info">
-        <h1>{{ props.title || "New Chat" }}</h1>
+        <h1>{{ title || "New Chat" }}</h1>
         <p class="subtitle">
           <span class="status-dot"></span>
           <span class="status-text">Assistant is online</span>
@@ -35,12 +25,6 @@ function onToggleDeepThinking(event: Event) {
         <span class="btn-icon">X</span>
         <span class="btn-text">Clear</span>
       </button>
-
-      <label class="thinking-toggle deep-thinking-toggle">
-        <input type="checkbox" :checked="enableDeepThinking" @change="onToggleDeepThinking" />
-        <span class="toggle-slider"></span>
-        <span class="toggle-text">Enable deep thinking</span>
-      </label>
     </div>
   </header>
 </template>
@@ -175,73 +159,5 @@ function onToggleDeepThinking(event: Event) {
 
 .btn-icon {
   font-size: 14px;
-}
-
-.thinking-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
-  color: var(--text-secondary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 8px 14px;
-  background: var(--bg-panel);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  user-select: none;
-  position: relative;
-}
-
-.thinking-toggle:hover {
-  border-color: var(--brand);
-}
-
-.thinking-toggle input[type="checkbox"] {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.toggle-slider {
-  width: 36px;
-  height: 20px;
-  background: var(--bg-soft);
-  border-radius: 999px;
-  position: relative;
-  transition: all var(--transition-fast);
-  border: 1px solid var(--border);
-}
-
-.toggle-slider::before {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 14px;
-  height: 14px;
-  background: white;
-  border-radius: 50%;
-  transition: all var(--transition-fast);
-  box-shadow: var(--shadow-sm);
-}
-
-.thinking-toggle input:checked + .toggle-slider {
-  background: var(--brand);
-  border-color: var(--brand);
-}
-
-.thinking-toggle input:checked + .toggle-slider::before {
-  transform: translateX(16px);
-}
-
-.toggle-text {
-  font-weight: 500;
-}
-
-.deep-thinking-toggle input:checked + .toggle-slider {
-  background: var(--success);
-  border-color: var(--success);
 }
 </style>

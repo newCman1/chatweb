@@ -7,7 +7,8 @@ describe("ChatInput", () => {
     const wrapper = mount(ChatInput, {
       props: {
         isStreaming: false,
-        disabled: false
+        disabled: false,
+        enableDeepThinking: false
       }
     });
 
@@ -23,7 +24,8 @@ describe("ChatInput", () => {
     const wrapper = mount(ChatInput, {
       props: {
         isStreaming: false,
-        disabled: false
+        disabled: false,
+        enableDeepThinking: false
       }
     });
 
@@ -32,5 +34,19 @@ describe("ChatInput", () => {
     await textarea.trigger("keydown", { key: "Enter", shiftKey: true });
 
     expect(wrapper.emitted("send")).toBeUndefined();
+  });
+
+  it("emits deep thinking toggle update", async () => {
+    const wrapper = mount(ChatInput, {
+      props: {
+        isStreaming: false,
+        disabled: false,
+        enableDeepThinking: false
+      }
+    });
+
+    const checkbox = wrapper.find('input[type="checkbox"]');
+    await checkbox.setValue(true);
+    expect(wrapper.emitted("update:enableDeepThinking")?.[0]).toEqual([true]);
   });
 });

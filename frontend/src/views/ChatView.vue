@@ -54,18 +54,16 @@ onMounted(async () => {
     />
 
     <section class="chat-main">
-      <ChatHeader
-        :title="title"
-        :enable-deep-thinking="chatStore.enableDeepThinking"
-        @update:enable-deep-thinking="chatStore.setEnableDeepThinking"
-      />
+      <ChatHeader :title="title" />
       <MessageList :messages="messages" />
       <p v-if="chatStore.errorText" class="error-toast">{{ chatStore.errorText }}</p>
       <ChatInput
         :disabled="!conversationStore.currentConversationId"
         :is-streaming="chatStore.isStreaming"
+        :enable-deep-thinking="chatStore.enableDeepThinking"
         @send="onSend"
         @stop="chatStore.stop"
+        @update:enable-deep-thinking="chatStore.setEnableDeepThinking"
       />
     </section>
   </main>

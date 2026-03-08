@@ -4,11 +4,13 @@ import { ref } from "vue";
 const props = defineProps<{
   disabled?: boolean;
   isStreaming: boolean;
+  enableDeepThinking: boolean;
 }>();
 
 const emit = defineEmits<{
   send: [content: string];
   stop: [];
+  "update:enableDeepThinking": [value: boolean];
 }>();
 
 const draft = ref("");
@@ -27,12 +29,9 @@ function onKeydown(event: KeyboardEvent) {
   }
 }
 
-function insertCodeBlock() {
-  draft.value += "\n```\n\n```";
-}
-
-function insertList() {
-  draft.value += "\n- ";
+function onToggleDeepThinking(event: Event) {
+  const target = event.target as HTMLInputElement;
+  emit("update:enableDeepThinking", target.checked);
 }
 </script>
 
@@ -48,34 +47,22 @@ function insertList() {
         @keydown="onKeydown"
       />
       <div class="chat-input-toolbar">
-        <div class="toolbar-left">
-          <button class="toolbar-btn" title="Insert code block" @click="insertCodeBlock">
-            <span class="btn-icon">{ }</span>
-          </button>
-          <button class="toolbar-btn" title="Insert list" @click="insertList">
-            <span class="btn-icon">☰</span>
-          </button>
-        </div>
         <span class="input-hint">
           <kbd>Enter</kbd> to send · <kbd>Shift</kbd> + <kbd>Enter</kbd> for new line
         </span>
       </div>
     </div>
+
+    <div class="compose-options">
+      <label class="thinking-toggle">
+        <input type="checkbox" :checked="enableDeepThinking" @change="onToggleDeepThinking" />
+        <span class="toggle-text">启用深度思考</span>
+      </label>
+    </div>
+
     <div class="chat-actions">
-      <button 
-        class="stop-btn" 
-        :disabled="!isStreaming" 
-        @click="$emit('stop')"
-      >
-        <span class="btn-icon">⏹</span>
-        Stop
-      </button>
-      <button 
-        class="send-btn" 
-        :disabled="disabled || isStreaming || !draft.trim()" 
-        @click="onSend"
-      >
-        <span class="btn-icon">➤</span>
+      <button class="stop-btn" :disabled="!isStreaming" @click="$emit('stop')">Stop</button>
+      <button class="send-btn" :disabled="disabled || isStreaming || !draft.trim()" @click="onSend">
         Send
       </button>
     </div>
@@ -87,17 +74,6 @@ function insertList() {
   border-top: 1px solid var(--border);
   padding: 20px 24px 24px;
   background: var(--bg-panel);
-  position: relative;
-}
-
-.chat-input-wrap::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 24px;
-  right: 24px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--border), transparent);
 }
 
 .chat-input-container {
@@ -106,12 +82,11 @@ function insertList() {
   border-radius: var(--radius-xl);
   padding: 6px;
   transition: all var(--transition-fast);
-  margin-bottom: 12px;
 }
 
 .chat-input-container:focus-within {
   border-color: var(--brand);
-  box-shadow: 0 0 0 4px var(--brand-soft), var(--shadow-glow);
+  box-shadow: 0 0 0 4px var(--brand-soft);
 }
 
 .chat-input {
@@ -132,45 +107,12 @@ function insertList() {
 
 .chat-input::placeholder {
   color: var(--text-tertiary);
-  font-style: italic;
 }
 
 .chat-input-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   padding: 10px 14px;
   border-top: 1px solid var(--border-light);
   margin-top: 6px;
-}
-
-.toolbar-left {
-  display: flex;
-  gap: 8px;
-}
-
-.toolbar-btn {
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 6px 12px;
-  font-size: 13px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.toolbar-btn:hover {
-  background: var(--bg-panel);
-  border-color: var(--brand);
-  color: var(--brand);
-}
-
-.btn-icon {
-  font-weight: 600;
 }
 
 .input-hint {
@@ -178,7 +120,7 @@ function insertList() {
   color: var(--text-tertiary);
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 .input-hint kbd {
@@ -188,13 +130,33 @@ function insertList() {
   padding: 2px 6px;
   font-family: var(--font-mono);
   font-size: 11px;
-  font-weight: 600;
+}
+
+.compose-options {
+  margin-top: 10px;
+}
+
+.thinking-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-soft);
+  font-size: 13px;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.thinking-toggle input {
+  margin: 0;
 }
 
 .chat-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
+  margin-top: 10px;
+  display: inline-flex;
+  gap: 8px;
 }
 
 .chat-actions button {
@@ -204,21 +166,12 @@ function insertList() {
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
   transition: all var(--transition-fast);
 }
 
 .send-btn {
   background: var(--brand-gradient);
   color: #fff;
-  box-shadow: var(--shadow-sm);
-}
-
-.send-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md), var(--shadow-glow);
 }
 
 .send-btn:disabled {
@@ -229,13 +182,6 @@ function insertList() {
 .stop-btn {
   background: var(--danger-soft);
   color: var(--danger);
-  border: 1px solid transparent;
-}
-
-.stop-btn:hover:not(:disabled) {
-  background: var(--danger);
-  color: white;
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
 .stop-btn:disabled {
