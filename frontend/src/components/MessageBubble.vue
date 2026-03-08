@@ -1,13 +1,21 @@
 <script setup lang="ts">
 import type { Message } from "@/types/chat";
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 
 const props = defineProps<{
   message: Message;
-  showThinking: boolean;
 }>();
 
 const isUser = computed(() => props.message.role === "user");
+const hasThinking = computed(() => Boolean(props.message.thinking?.trim()));
+const thinkingVisible = ref(false);
+
+watch(
+  () => props.message.id,
+  () => {
+    thinkingVisible.value = false;
+  }
+);
 
 const formattedTime = computed(() => {
   const date = new Date(props.message.createdAt);
@@ -30,7 +38,9 @@ const statusText = computed(() => {
   }
 });
 
-const hasThinking = computed(() => Boolean(props.message.thinking?.trim()));
+function toggleThinking() {
+  thinkingVisible.value = !thinkingVisible.value;
+}
 </script>
 
 <template>
@@ -42,16 +52,12 @@ const hasThinking = computed(() => Boolean(props.message.thinking?.trim()));
 
     <div class="message-bubble-wrapper">
       <div class="message-bubble" :class="message.role">
-        <details 
-          v-if="message.role === 'assistant' && showThinking && hasThinking" 
-          class="thinking-box"
-        >
-          <summary>
-            <span class="thinking-icon">🤔</span>
-            Thinking Process
-          </summary>
-          <pre class="thinking-content">{{ message.thinking }}</pre>
-        </details>
+        <div v-if="message.role === 'assistant' && hasThinking" class="thinking-wrap">
+          <button class="thinking-chip" type="button" @click="toggleThinking">
+            {{ thinkingVisible ? "隐藏思考" : "显示思考" }}
+          </button>
+          <pre v-if="thinkingVisible" class="thinking-content">{{ message.thinking }}</pre>
+        </div>
 
         <div class="message-content">{{ message.content }}</div>
 
@@ -183,6 +189,39 @@ const hasThinking = computed(() => Boolean(props.message.thinking?.trim()));
   border-bottom-left-radius: var(--radius-sm);
 }
 
+.thinking-wrap {
+  margin-bottom: 10px;
+}
+
+.thinking-chip {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--bg-soft);
+  cursor: pointer;
+}
+
+.thinking-chip:hover {
+  border-color: var(--brand);
+  color: var(--brand-strong);
+}
+
+.thinking-content {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-main);
+  padding: 12px;
+  background: var(--bg-soft);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--brand);
+  line-height: 1.6;
+}
+
 .message-content {
   margin: 0;
   white-space: pre-wrap;
@@ -216,7 +255,7 @@ const hasThinking = computed(() => Boolean(props.message.thinking?.trim()));
   color: var(--text-tertiary);
   padding: 4px 10px;
   background: var(--bg-soft);
-  border-radius: var(--radius-full);
+  border-radius: 999px;
   font-weight: 600;
 }
 
@@ -229,8 +268,15 @@ const hasThinking = computed(() => Boolean(props.message.thinking?.trim()));
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.8); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
 }
 
 .status-indicator.streaming .status-dot {
@@ -240,58 +286,6 @@ const hasThinking = computed(() => Boolean(props.message.thinking?.trim()));
 .status-indicator.error .status-dot {
   background: var(--danger);
   animation: none;
-}
-
-.thinking-box {
-  margin-bottom: 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--bg-soft);
-  padding: 12px 14px;
-  font-size: 13px;
-}
-
-.thinking-box summary {
-  cursor: pointer;
-  font-weight: 600;
-  color: var(--text-secondary);
-  user-select: none;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  list-style: none;
-}
-
-.thinking-box summary::-webkit-details-marker {
-  display: none;
-}
-
-.thinking-box summary::before {
-  content: '▶';
-  font-size: 10px;
-  transition: transform 0.2s;
-}
-
-.thinking-box[open] summary::before {
-  transform: rotate(90deg);
-}
-
-.thinking-icon {
-  font-size: 14px;
-}
-
-.thinking-content {
-  margin: 12px 0 0;
-  font-size: 12px;
-  color: var(--text-secondary);
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-family: var(--font-main);
-  padding: 12px;
-  background: var(--bg-panel);
-  border-radius: var(--radius-sm);
-  border-left: 3px solid var(--brand);
-  line-height: 1.6;
 }
 
 .typing-indicator {
@@ -308,11 +302,24 @@ const hasThinking = computed(() => Boolean(props.message.thinking?.trim()));
   animation: typingBounce 1.4s ease-in-out infinite both;
 }
 
-.typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
-.typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+.typing-indicator span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.typing-indicator span:nth-child(2) {
+  animation-delay: -0.16s;
+}
 
 @keyframes typingBounce {
-  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-  40% { transform: scale(1); opacity: 1; }
+  0%,
+  80%,
+  100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 </style>

@@ -10,19 +10,12 @@ interface ChatState {
   activeAssistantMessageId: string | null;
   activeAbortController: AbortController | null;
   errorText: string | null;
-  showThinking: boolean;
   enableDeepThinking: boolean;
 }
 
 const uid = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
-const THINKING_PREF_KEY = "chatweb.showThinking";
 const DEEP_THINKING_PREF_KEY = "chatweb.enableDeepThinking";
-
-function loadThinkingPreference(): boolean {
-  if (typeof window === "undefined") return false;
-  return window.localStorage.getItem(THINKING_PREF_KEY) === "1";
-}
 
 function loadDeepThinkingPreference(): boolean {
   if (typeof window === "undefined") return false;
@@ -36,7 +29,6 @@ export const useChatStore = defineStore("chat", {
     activeAssistantMessageId: null,
     activeAbortController: null,
     errorText: null,
-    showThinking: loadThinkingPreference(),
     enableDeepThinking: loadDeepThinkingPreference()
   }),
   actions: {
@@ -142,12 +134,6 @@ export const useChatStore = defineStore("chat", {
       logger.warn("chat.stop.requested", { conversationId: this.activeConversationId });
       this.activeAbortController?.abort();
       chatApi.abortStream(this.activeConversationId);
-    },
-    setShowThinking(show: boolean) {
-      this.showThinking = show;
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(THINKING_PREF_KEY, show ? "1" : "0");
-      }
     },
     setEnableDeepThinking(enable: boolean) {
       this.enableDeepThinking = enable;

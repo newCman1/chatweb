@@ -86,12 +86,12 @@ describe("chat store", () => {
     expect(["stopped", "done"]).toContain(assistant?.status);
   });
 
-  it("persists thinking toggle preference", () => {
+  it("persists deep thinking toggle preference", () => {
     const chatStore = useChatStore();
-    chatStore.setShowThinking(true);
-    expect(window.localStorage.getItem("chatweb.showThinking")).toBe("1");
-    chatStore.setShowThinking(false);
-    expect(window.localStorage.getItem("chatweb.showThinking")).toBe("0");
+    chatStore.setEnableDeepThinking(true);
+    expect(window.localStorage.getItem("chatweb.enableDeepThinking")).toBe("1");
+    chatStore.setEnableDeepThinking(false);
+    expect(window.localStorage.getItem("chatweb.enableDeepThinking")).toBe("0");
   });
 
   it("sends deep thinking preference to api", async () => {

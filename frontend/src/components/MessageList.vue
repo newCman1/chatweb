@@ -5,7 +5,6 @@ import MessageBubble from "./MessageBubble.vue";
 
 const props = defineProps<{
   messages: Message[];
-  showThinking: boolean;
 }>();
 
 const containerRef = ref<HTMLElement | null>(null);
@@ -70,8 +69,7 @@ const suggestions = [
         <MessageBubble 
           v-for="msg in messages" 
           :key="msg.id" 
-          :message="msg" 
-          :show-thinking="showThinking" 
+          :message="msg"
         />
       </div>
       <div class="messages-end"></div>

@@ -56,12 +56,10 @@ onMounted(async () => {
     <section class="chat-main">
       <ChatHeader
         :title="title"
-        :show-thinking="chatStore.showThinking"
         :enable-deep-thinking="chatStore.enableDeepThinking"
-        @update:show-thinking="chatStore.setShowThinking"
         @update:enable-deep-thinking="chatStore.setEnableDeepThinking"
       />
-      <MessageList :messages="messages" :show-thinking="chatStore.showThinking" />
+      <MessageList :messages="messages" />
       <p v-if="chatStore.errorText" class="error-toast">{{ chatStore.errorText }}</p>
       <ChatInput
         :disabled="!conversationStore.currentConversationId"
