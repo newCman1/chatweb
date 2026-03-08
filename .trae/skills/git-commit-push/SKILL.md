@@ -14,9 +14,9 @@ Always execute in this order:
 git status
 ```
 
-2. Stage all changes
+2. Stage requested changes only
 ```bash
-git add .
+git add <requested-paths>
 ```
 
 3. Commit changes
@@ -34,3 +34,7 @@ git push
 - Do not skip `git status`.
 - Keep commit messages short and clear.
 - If push fails, keep local commit and retry after fixing network/remote issues.
+- Commit scope must be minimal:
+  - Only stage/commit modules explicitly requested by the user in the current task.
+  - Never include unrelated local changes that were not requested.
+  - If unrelated changes exist, use selective staging (e.g. `git add <path>`), then commit only requested files.
