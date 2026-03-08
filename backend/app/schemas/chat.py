@@ -38,6 +38,13 @@ class ListMessagesResponse(BaseModel):
     messages: list[MessageDTO]
 
 
+class AttachmentInput(BaseModel):
+    name: str
+    mime_type: str = Field(alias="mimeType")
+    content: str
+    size: int
+
+
 class SendMessageRequest(BaseModel):
     conversation_id: str = Field(alias="conversationId")
     content: str
@@ -47,6 +54,7 @@ class SendMessageRequest(BaseModel):
     api_base_url: Optional[str] = Field(default=None, alias="apiBaseUrl")
     api_model: Optional[str] = Field(default=None, alias="apiModel")
     api_reasoning_model: Optional[str] = Field(default=None, alias="apiReasoningModel")
+    attachments: Optional[list[AttachmentInput]] = None
     stream_format: StreamFormat = Field(default="json", alias="streamFormat")
 
 

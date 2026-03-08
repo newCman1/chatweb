@@ -178,14 +178,23 @@ describe("SseChatApi", () => {
       apiKey: "sk-123",
       apiBaseUrl: "https://api.deepseek.com/v1",
       apiModel: "deepseek-chat",
-      apiReasoningModel: "deepseek-reasoner"
+      apiReasoningModel: "deepseek-reasoner",
+      attachments: [
+        {
+          name: "notes.txt",
+          mimeType: "text/plain",
+          content: "attachment content",
+          size: 18
+        }
+      ]
     })) {
     }
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string) as Record<string, string | boolean>;
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string) as Record<string, unknown>;
     expect(body.enableWebSearch).toBe(true);
     expect(body.apiKey).toBe("sk-123");
     expect(body.apiBaseUrl).toBe("https://api.deepseek.com/v1");
     expect(body.apiModel).toBe("deepseek-chat");
     expect(body.apiReasoningModel).toBe("deepseek-reasoner");
+    expect(Array.isArray(body.attachments)).toBe(true);
   });
 });

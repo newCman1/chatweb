@@ -59,6 +59,10 @@ Use this skill whenever the task modifies frontend code.
   - expose API settings panel in composer
   - persist user settings in localStorage
   - do not hardcode user key in source files
+- Composer attachments:
+  - support text attachments only (`txt/md/json/csv/log/xml/yaml`)
+  - send attachments via API payload `attachments[]`
+  - keep unsupported file feedback clear in UI
 - Preserve `IChatApi` boundary and adapter injection pattern.
 - Add or update tests when behavior changes.
 - Keep frontend logger redaction enabled for sensitive fields.

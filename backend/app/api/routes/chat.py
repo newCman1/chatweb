@@ -14,8 +14,7 @@ from app.schemas.chat import (
     SendMessageRequest,
     SimpleResponse,
 )
-from app.services.chat_service import chat_service
-from app.services.chat_service import StreamRuntimeOptions
+from app.services.chat_service import RuntimeAttachment, StreamRuntimeOptions, chat_service
 
 
 router = APIRouter()
@@ -92,6 +91,7 @@ async def stream_chat(payload: SendMessageRequest) -> StreamingResponse:
             "enable_web_search": payload.enable_web_search,
             "stream_format": payload.stream_format,
             "content_length": len(content),
+            "attachments_count": len(payload.attachments or []),
             "api_key_provided": bool(payload.api_key and payload.api_key.strip()),
         },
     )
@@ -104,6 +104,15 @@ async def stream_chat(payload: SendMessageRequest) -> StreamingResponse:
             payload.api_reasoning_model.strip()
             if payload.api_reasoning_model and payload.api_reasoning_model.strip()
             else None
+        ),
+        attachments=tuple(
+            RuntimeAttachment(
+                name=item.name.strip()[:120] or "attachment",
+                mime_type=item.mime_type.strip()[:80] or "text/plain",
+                content=item.content[:12000],
+                size=max(0, item.size),
+            )
+            for item in (payload.attachments or [])
         ),
     )
     await chat_service.append_user_message(payload.conversation_id, content)

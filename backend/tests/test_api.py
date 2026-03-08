@@ -163,6 +163,14 @@ def test_stream_runtime_options_and_web_search(monkeypatch):
             "apiBaseUrl": "https://api.deepseek.com/v1",
             "apiModel": "deepseek-chat",
             "apiReasoningModel": "deepseek-reasoner",
+            "attachments": [
+                {
+                    "name": "context.txt",
+                    "mimeType": "text/plain",
+                    "content": "uploaded notes",
+                    "size": 14,
+                }
+            ],
             "streamFormat": "json",
         },
     )
@@ -174,6 +182,7 @@ def test_stream_runtime_options_and_web_search(monkeypatch):
     assert captured["options"].model == "deepseek-chat"
     assert captured["options"].reasoning_model == "deepseek-reasoner"
     assert any("Web search snippets" in message["content"] for message in captured["messages"])
+    assert any("uploaded notes" in message["content"] for message in captured["messages"])
 
 
 def test_binary_stream_runtime_options_and_provider(monkeypatch):

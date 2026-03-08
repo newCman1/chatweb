@@ -25,6 +25,13 @@ export interface StreamChunk {
   done?: boolean;
 }
 
+export interface UploadAttachment {
+  name: string;
+  mimeType: string;
+  content: string;
+  size: number;
+}
+
 export interface ApiError {
   code: string;
   message: string;

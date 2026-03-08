@@ -64,7 +64,7 @@ describe("chat store", () => {
     const conversationStore = useConversationStore();
     await conversationStore.createConversation();
     const chatStore = useChatStore();
-    await chatStore.send("hello");
+    await chatStore.send({ content: "hello" });
 
     const messages = conversationStore.currentMessages;
     expect(messages).toHaveLength(2);
@@ -76,7 +76,7 @@ describe("chat store", () => {
     const conversationStore = useConversationStore();
     await conversationStore.createConversation();
     const chatStore = useChatStore();
-    const task = chatStore.send("stop test");
+    const task = chatStore.send({ content: "stop test" });
     await delay(1);
     chatStore.stop();
     await task;
@@ -99,11 +99,11 @@ describe("chat store", () => {
     await conversationStore.createConversation();
     const chatStore = useChatStore();
     chatStore.setEnableDeepThinking(true);
-    await chatStore.send("need deep thinking");
+    await chatStore.send({ content: "need deep thinking" });
     expect(apiStub.lastInput?.enableThinking).toBe(true);
 
     chatStore.setEnableDeepThinking(false);
-    await chatStore.send("no deep thinking");
+    await chatStore.send({ content: "no deep thinking" });
     expect(apiStub.lastInput?.enableThinking).toBe(false);
   });
 
@@ -117,7 +117,7 @@ describe("chat store", () => {
     chatStore.setUserApiModel("deepseek-chat");
     chatStore.setUserApiReasoningModel("deepseek-reasoner");
 
-    await chatStore.send("use web");
+    await chatStore.send({ content: "use web" });
     expect(apiStub.lastInput?.enableWebSearch).toBe(true);
     expect(apiStub.lastInput?.apiKey).toBe("sk-test");
     expect(apiStub.lastInput?.apiBaseUrl).toBe("https://api.deepseek.com/v1");
@@ -143,5 +143,24 @@ describe("chat store", () => {
     expect(chatStore.isThinkingExpanded(messageId)).toBe(true);
     chatStore.toggleThinkingExpanded(messageId);
     expect(chatStore.isThinkingExpanded(messageId)).toBe(false);
+  });
+
+  it("passes attachments to api", async () => {
+    const conversationStore = useConversationStore();
+    await conversationStore.createConversation();
+    const chatStore = useChatStore();
+    await chatStore.send({
+      content: "read this file",
+      attachments: [
+        {
+          name: "notes.txt",
+          mimeType: "text/plain",
+          content: "hello attachment",
+          size: 16
+        }
+      ]
+    });
+    expect(apiStub.lastInput?.attachments).toHaveLength(1);
+    expect(apiStub.lastInput?.attachments?.[0].name).toBe("notes.txt");
   });
 });

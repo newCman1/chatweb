@@ -6,6 +6,7 @@ import MessageList from "@/components/MessageList.vue";
 import ChatInput from "@/components/ChatInput.vue";
 import { useConversationStore } from "@/stores/conversation";
 import { useChatStore } from "@/stores/chat";
+import type { UploadAttachment } from "@/types/chat";
 
 const conversationStore = useConversationStore();
 const chatStore = useChatStore();
@@ -21,8 +22,8 @@ function onSelectConversation(conversationId: string) {
   void conversationStore.selectConversation(conversationId);
 }
 
-async function onSend(content: string) {
-  await chatStore.send(content);
+async function onSend(payload: { content: string; attachments: UploadAttachment[] }) {
+  await chatStore.send(payload);
 }
 
 function onToggleThinking(messageId: string) {

@@ -1,10 +1,11 @@
-import type { Conversation, Message, StreamChunk } from "@/types/chat";
+import type { Conversation, Message, StreamChunk, UploadAttachment } from "@/types/chat";
 
 export interface StreamReplyInput {
   conversationId: string;
   messages: Message[];
   enableThinking?: boolean;
   enableWebSearch?: boolean;
+  attachments?: UploadAttachment[];
   apiKey?: string;
   apiBaseUrl?: string;
   apiModel?: string;

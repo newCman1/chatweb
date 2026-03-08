@@ -121,6 +121,7 @@ Request payload can include:
 - `enableThinking: true|false` (user-controlled deep thinking switch)
 - `enableWebSearch: true|false` (optional internet search snippets)
 - `apiKey` / `apiBaseUrl` / `apiModel` / `apiReasoningModel` (optional runtime override from UI settings)
+- `attachments` (optional text attachments from composer: `txt/md/json/csv/log/xml/yaml`)
 - backend web-search timeout can be tuned by `CHATWEB_WEB_SEARCH_TIMEOUT_SECONDS` (default `2`)
 
 2. `binary`
@@ -174,8 +175,10 @@ DeepSeek is now the default profile in `backend/.env.development` and `backend/.
   - Base URL
   - Model
   - Reasoning Model
+- Composer includes `Attach` for text files (`txt/md/json/csv/log/xml/yaml`).
 - These values are stored in browser localStorage and sent per request to backend.
 - If user API fields are empty, backend falls back to server-side `CHATWEB_AI_*` env config.
+- Current provider path is OpenAI-compatible text chat. For DeepSeek default endpoint, attachment content is injected as text context (not native file/image understanding).
 
 ## CI
 

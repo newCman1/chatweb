@@ -167,6 +167,7 @@ class ChatService:
                 "message_id": assistant.id,
                 "enable_thinking": enable_thinking,
                 "enable_web_search": options.enable_web_search,
+                "attachments_count": len(options.attachments),
             },
         )
 
@@ -259,6 +260,7 @@ class ChatService:
                 "message_id": assistant.id,
                 "enable_thinking": enable_thinking,
                 "enable_web_search": options.enable_web_search,
+                "attachments_count": len(options.attachments),
             },
         )
         try:
@@ -307,6 +309,7 @@ class ChatService:
                 conversation_id,
                 user_content=user_content,
                 enable_web_search=runtime_options.enable_web_search,
+                attachments=runtime_options.attachments,
             )
             try:
                 async for event_type, delta in ai_client.stream_chat(
@@ -351,7 +354,11 @@ class ChatService:
             await asyncio.sleep(settings.token_delay_seconds)
 
     async def _build_provider_messages(
-        self, conversation_id: str, user_content: str, enable_web_search: bool
+        self,
+        conversation_id: str,
+        user_content: str,
+        enable_web_search: bool,
+        attachments: tuple["RuntimeAttachment", ...] = (),
     ) -> list[dict[str, str]]:
         async with self._lock:
             history = list(self._messages.get(conversation_id, []))
@@ -371,12 +378,38 @@ class ChatService:
                         ),
                     }
                 )
+        attachment_context = self._build_attachment_context(attachments)
+        if attachment_context:
+            provider_messages.append(
+                {
+                    "role": "system",
+                    "content": (
+                        "User uploaded text attachments. Use this material as additional context when relevant:\n"
+                        f"{attachment_context}"
+                    ),
+                }
+            )
         for item in history:
             if item.role not in {"user", "assistant"}:
                 continue
             if item.content.strip():
                 provider_messages.append({"role": item.role, "content": item.content})
         return provider_messages
+
+    def _build_attachment_context(self, attachments: tuple["RuntimeAttachment", ...]) -> str:
+        if not attachments:
+            return ""
+        blocks: list[str] = []
+        for item in attachments:
+            if not item.content.strip():
+                continue
+            blocks.append(
+                (
+                    f"[Attachment] name={item.name} mime={item.mime_type} size={item.size}\n"
+                    f"{item.content.strip()}"
+                )
+            )
+        return "\n\n".join(blocks)
 
     async def _build_web_search_context(self, query: str) -> str:
         context = await search_web_context(query)
@@ -436,3 +469,12 @@ class StreamRuntimeOptions:
     api_base_url: Optional[str] = None
     api_model: Optional[str] = None
     api_reasoning_model: Optional[str] = None
+    attachments: tuple["RuntimeAttachment", ...] = ()
+
+
+@dataclass(frozen=True)
+class RuntimeAttachment:
+    name: str
+    mime_type: str
+    content: str
+    size: int

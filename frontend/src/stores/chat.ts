@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { chatApi } from "@/api/client";
 import { useConversationStore } from "./conversation";
-import type { Message } from "@/types/chat";
+import type { Message, UploadAttachment } from "@/types/chat";
 import { logger } from "@/utils/logger";
 
 interface ChatState {
@@ -69,9 +69,10 @@ export const useChatStore = defineStore("chat", {
     thinkingExpandedByMessageId: {}
   }),
   actions: {
-    async send(content: string) {
-      const trimmed = content.trim();
-      if (!trimmed || this.isStreaming) return;
+    async send(payload: { content: string; attachments?: UploadAttachment[] }) {
+      const trimmed = payload.content.trim();
+      const attachments = payload.attachments ?? [];
+      if ((!trimmed && attachments.length === 0) || this.isStreaming) return;
 
       const conversationStore = useConversationStore();
       if (!conversationStore.currentConversationId) {
@@ -85,14 +86,19 @@ export const useChatStore = defineStore("chat", {
       logger.info("chat.send", {
         conversationId,
         contentLength: trimmed.length,
+        attachmentsCount: attachments.length,
         enableWebSearch: this.enableWebSearch,
         apiKeyProvided: Boolean(this.userApiKey.trim())
       });
+      const withAttachmentHints =
+        attachments.length > 0
+          ? `${trimmed}${trimmed ? "\n\n" : ""}[Attached files]\n${attachments.map((item) => `- ${item.name}`).join("\n")}`
+          : trimmed;
       const userMessage: Message = {
         id: uid(),
         conversationId,
         role: "user",
-        content: trimmed,
+        content: withAttachmentHints,
         status: "done",
         createdAt: now()
       };
@@ -126,6 +132,7 @@ export const useChatStore = defineStore("chat", {
           apiBaseUrl: this.userApiBaseUrl || undefined,
           apiModel: this.userApiModel || undefined,
           apiReasoningModel: this.userApiReasoningModel || undefined,
+          attachments: attachments.length ? attachments : undefined,
           signal: this.activeAbortController.signal
         });
         for await (const chunk of stream) {

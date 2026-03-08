@@ -77,6 +77,14 @@ export class SseChatApi implements IChatApi {
       if (input.apiReasoningModel?.trim()) {
         payload.apiReasoningModel = input.apiReasoningModel.trim();
       }
+      if (input.attachments && input.attachments.length > 0) {
+        payload.attachments = input.attachments.map((item) => ({
+          name: item.name,
+          mimeType: item.mimeType,
+          content: item.content,
+          size: item.size
+        }));
+      }
       const response = await this.requestWithRetry(
         `${this.baseUrl}/chat/stream`,
         {

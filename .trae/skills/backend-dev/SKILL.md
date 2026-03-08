@@ -40,6 +40,9 @@ Use this skill whenever the task modifies backend code.
 - `POST /api/chat/stream` request must support:
   - `enableThinking: true|false` (user-controlled deep thinking switch)
   - `enableWebSearch: true|false` (optional web context enrichment)
+  - optional text attachments:
+    - `attachments[]` with `name`, `mimeType`, `content`, `size`
+    - attachment content should be bounded and injected as provider context
   - optional runtime provider overrides:
     - `apiKey`, `apiBaseUrl`, `apiModel`, `apiReasoningModel`
   - runtime overrides must work consistently for both `json` and `binary` stream modes
@@ -50,6 +53,7 @@ Use this skill whenever the task modifies backend code.
   - `CHATWEB_AI_HTTP_TRUST_ENV` (default `false` to avoid unexpected proxy issues)
   - `CHATWEB_WEB_SEARCH_TIMEOUT_SECONDS` (default `2`, avoid long blocking when web search unavailable)
   - `CHATWEB_AI_SEND_REASONING_EFFORT` (default `false` for DeepSeek)
+  - DeepSeek default path is text chat; attachment handling is text-context enrichment, not native file/image parsing
   - fallback to local mock stream when API key is empty
   - `CHATWEB_AI_FALLBACK_ON_ERROR` controls fallback when provider call fails
   - runtime request options should override env config when provided by frontend

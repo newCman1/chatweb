@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import type { UploadAttachment } from "@/types/chat";
 
 const props = withDefaults(
   defineProps<{
@@ -23,7 +24,7 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-  send: [content: string];
+  send: [payload: { content: string; attachments: UploadAttachment[] }];
   stop: [];
   "update:enableDeepThinking": [value: boolean];
   "update:enableWebSearch": [value: boolean];
@@ -36,15 +37,36 @@ const emit = defineEmits<{
 const draft = ref("");
 const settingsOpen = ref(false);
 const revealApiKey = ref(false);
+const fileInputRef = ref<HTMLInputElement | null>(null);
+const selectedAttachments = ref<UploadAttachment[]>([]);
+const attachmentError = ref("");
 
-const canSend = computed(() => !props.disabled && !props.isStreaming && draft.value.trim().length > 0);
+const MAX_ATTACHMENTS = 5;
+const MAX_FILE_SIZE = 1_500_000;
+const MAX_TEXT_LENGTH = 12_000;
+
+const textMimePrefixes = ["text/"];
+const textMimeTypes = new Set(["application/json", "application/xml", "application/yaml"]);
+const textExtensions = new Set(["txt", "md", "markdown", "json", "csv", "log", "xml", "yaml", "yml"]);
+
+const canSend = computed(
+  () =>
+    !props.disabled &&
+    !props.isStreaming &&
+    (draft.value.trim().length > 0 || selectedAttachments.value.length > 0)
+);
 const actionLabel = computed(() => (props.isStreaming ? "Stop" : "Send"));
 
 function onSend() {
   const content = draft.value.trim();
-  if (!content || props.disabled || props.isStreaming) return;
-  emit("send", content);
+  if ((!content && selectedAttachments.value.length === 0) || props.disabled || props.isStreaming) return;
+  emit("send", {
+    content,
+    attachments: [...selectedAttachments.value]
+  });
   draft.value = "";
+  selectedAttachments.value = [];
+  attachmentError.value = "";
 }
 
 function onPrimaryAction() {
@@ -71,6 +93,62 @@ function onToggleWebSearch(event: Event) {
   const target = event.target as HTMLInputElement;
   emit("update:enableWebSearch", target.checked);
 }
+
+function triggerFilePicker() {
+  fileInputRef.value?.click();
+}
+
+function removeAttachment(index: number) {
+  selectedAttachments.value = selectedAttachments.value.filter((_, i) => i !== index);
+}
+
+function isTextFile(file: File): boolean {
+  if (textMimePrefixes.some((prefix) => file.type.startsWith(prefix))) return true;
+  if (textMimeTypes.has(file.type)) return true;
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return textExtensions.has(ext);
+}
+
+function readFileAsText(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+    reader.onerror = () => reject(new Error(`Read file failed: ${file.name}`));
+    reader.readAsText(file);
+  });
+}
+
+async function onFileChange(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const files = Array.from(input.files ?? []);
+  input.value = "";
+  attachmentError.value = "";
+  if (!files.length) return;
+
+  const next = [...selectedAttachments.value];
+  for (const file of files) {
+    if (next.length >= MAX_ATTACHMENTS) {
+      attachmentError.value = `At most ${MAX_ATTACHMENTS} files can be attached.`;
+      break;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      attachmentError.value = `File too large: ${file.name} (max ${Math.floor(MAX_FILE_SIZE / 1000)}KB).`;
+      continue;
+    }
+
+    try {
+      if (isTextFile(file)) {
+        const content = (await readFileAsText(file)).slice(0, MAX_TEXT_LENGTH);
+        next.push({ name: file.name, mimeType: file.type || "text/plain", content, size: file.size });
+        continue;
+      }
+      attachmentError.value = `Unsupported file type: ${file.name}. Use text/json/csv/md/log/xml/yaml.`;
+    } catch {
+      attachmentError.value = `Cannot load file: ${file.name}`;
+    }
+  }
+  selectedAttachments.value = next;
+}
 </script>
 
 <template>
@@ -86,6 +164,15 @@ function onToggleWebSearch(event: Event) {
       />
       <div class="chat-input-toolbar">
         <div class="left-tools">
+          <button class="settings-btn" type="button" @click="triggerFilePicker">Attach</button>
+          <input
+            ref="fileInputRef"
+            class="file-input"
+            type="file"
+            accept=".txt,.md,.markdown,.json,.csv,.log,.xml,.yaml,.yml,text/*,application/json,application/xml,application/yaml"
+            multiple
+            @change="onFileChange"
+          />
           <label class="thinking-toggle">
             <input
               data-testid="deep-thinking-toggle"
@@ -121,6 +208,14 @@ function onToggleWebSearch(event: Event) {
           </button>
         </div>
       </div>
+
+      <div v-if="selectedAttachments.length > 0" class="attachment-list">
+        <span v-for="(item, index) in selectedAttachments" :key="`${item.name}-${index}`" class="attachment-chip">
+          {{ item.name }}
+          <button type="button" @click="removeAttachment(index)">x</button>
+        </span>
+      </div>
+      <p v-if="attachmentError" class="attachment-error">{{ attachmentError }}</p>
 
       <div v-if="settingsOpen" class="api-settings">
         <div class="api-row">
@@ -251,6 +346,10 @@ function onToggleWebSearch(event: Event) {
   cursor: pointer;
 }
 
+.file-input {
+  display: none;
+}
+
 .settings-btn:hover,
 .secondary-btn:hover {
   border-color: #cbd5e1;
@@ -347,5 +446,39 @@ function onToggleWebSearch(event: Event) {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 8px;
+}
+
+.attachment-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px 0;
+}
+
+.attachment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  color: var(--text-secondary);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
+.attachment-chip button {
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+}
+
+.attachment-error {
+  margin: 6px 12px 0;
+  color: var(--danger);
+  font-size: 12px;
 }
 </style>
