@@ -187,3 +187,4 @@ Acceptance:
 - 2026-03-08: Fixed DeepSeek connectivity by adding `CHATWEB_AI_HTTP_TRUST_ENV` (default `false`) to avoid inherited proxy-caused `httpx.ConnectError`.
 - 2026-03-08: Simplified desktop UI density, merged composer actions into a single Send/Stop button, and persisted per-message thinking expansion across conversation switching.
 - 2026-03-08: Added request-level provider overrides and optional web-search context pipeline, configurable directly from frontend page settings.
+- 2026-03-08: Review fix: binary stream mode now also honors runtime provider overrides, and web-search timeout reduced to 2s default to avoid long blocking delays.

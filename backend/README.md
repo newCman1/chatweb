@@ -94,6 +94,7 @@ Notes:
 - `apiKey/apiBaseUrl/apiModel/apiReasoningModel` are optional runtime overrides from frontend UI.
 - When runtime overrides are empty, backend uses server-side `CHATWEB_AI_*` env settings.
 - `enableWebSearch=true` triggers a lightweight web snippet fetch before provider call.
+- Web search timeout is configurable by `CHATWEB_WEB_SEARCH_TIMEOUT_SECONDS` (default: `2`).
 
 ## AI Provider Config (Optional)
 

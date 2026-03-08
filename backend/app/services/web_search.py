@@ -36,7 +36,9 @@ async def search_web_context(query: str, limit: int = 5) -> str:
 
     log_event(logger, logging.INFO, "web_search.start", {"query_length": len(q), "limit": limit})
     try:
-        async with httpx.AsyncClient(timeout=8.0, trust_env=settings.ai_http_trust_env) as client:
+        async with httpx.AsyncClient(
+            timeout=settings.web_search_timeout_seconds, trust_env=settings.ai_http_trust_env
+        ) as client:
             response = await client.get(
                 "https://api.duckduckgo.com/",
                 params={

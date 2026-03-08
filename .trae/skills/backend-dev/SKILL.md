@@ -42,11 +42,13 @@ Use this skill whenever the task modifies backend code.
   - `enableWebSearch: true|false` (optional web context enrichment)
   - optional runtime provider overrides:
     - `apiKey`, `apiBaseUrl`, `apiModel`, `apiReasoningModel`
+  - runtime overrides must work consistently for both `json` and `binary` stream modes
 - Optional real model provider is configured by:
   - `CHATWEB_AI_API_KEY`, `CHATWEB_AI_BASE_URL`
   - `CHATWEB_AI_MODEL` (normal chat model)
   - `CHATWEB_AI_REASONING_MODEL` (deep-thinking model)
   - `CHATWEB_AI_HTTP_TRUST_ENV` (default `false` to avoid unexpected proxy issues)
+  - `CHATWEB_WEB_SEARCH_TIMEOUT_SECONDS` (default `2`, avoid long blocking when web search unavailable)
   - `CHATWEB_AI_SEND_REASONING_EFFORT` (default `false` for DeepSeek)
   - fallback to local mock stream when API key is empty
   - `CHATWEB_AI_FALLBACK_ON_ERROR` controls fallback when provider call fails

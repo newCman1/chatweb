@@ -240,12 +240,16 @@ class ChatService:
             self._active_abort_flags.pop(conversation_id, None)
 
     async def stream_binary(
-        self, conversation_id: str, user_content: str, enable_thinking: bool
+        self,
+        conversation_id: str,
+        user_content: str,
+        enable_thinking: bool,
+        runtime_options: Optional["StreamRuntimeOptions"] = None,
     ) -> AsyncGenerator[bytes, None]:
+        options = runtime_options or StreamRuntimeOptions()
         abort_flag = asyncio.Event()
         self._active_abort_flags[conversation_id] = abort_flag
         assistant = await self.create_assistant_message_placeholder(conversation_id)
-        chunks = build_assistant_reply(user_content).split(" ")
         log_event(
             self._logger,
             logging.INFO,
@@ -254,10 +258,13 @@ class ChatService:
                 "conversation_id": conversation_id,
                 "message_id": assistant.id,
                 "enable_thinking": enable_thinking,
+                "enable_web_search": options.enable_web_search,
             },
         )
         try:
-            for chunk in chunks:
+            async for event_type, delta in self._stream_with_provider_fallback(
+                conversation_id, user_content, enable_thinking, options
+            ):
                 if abort_flag.is_set():
                     await self._mark_stopped(conversation_id, assistant.id)
                     log_event(
@@ -267,10 +274,11 @@ class ChatService:
                         {"conversation_id": conversation_id, "message_id": assistant.id},
                     )
                     return
-                content = (chunk + " ").encode("utf-8")
-                await self._append_assistant_text(conversation_id, assistant.id, chunk + " ")
+                if event_type != "answer":
+                    continue
+                content = delta.encode("utf-8")
+                await self._append_assistant_text(conversation_id, assistant.id, delta)
                 yield content
-                await asyncio.sleep(settings.token_delay_seconds)
             await self._mark_done(conversation_id, assistant.id)
             log_event(
                 self._logger,

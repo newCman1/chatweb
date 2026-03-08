@@ -176,6 +176,51 @@ def test_stream_runtime_options_and_web_search(monkeypatch):
     assert any("Web search snippets" in message["content"] for message in captured["messages"])
 
 
+def test_binary_stream_runtime_options_and_provider(monkeypatch):
+    captured = {"options": None, "messages": []}
+
+    async def fake_search(_query):
+        return ""
+
+    def fake_is_enabled(_options=None):
+        return True
+
+    async def fake_stream(messages, enable_thinking=False, options=None):
+        captured["messages"] = messages
+        captured["options"] = options
+        yield ("thinking", "ignored")
+        yield ("answer", "hello ")
+        yield ("answer", "world")
+
+    monkeypatch.setattr(chat_service_module.chat_service, "_build_web_search_context", fake_search)
+    monkeypatch.setattr(chat_service_module.ai_client, "is_enabled", fake_is_enabled)
+    monkeypatch.setattr(chat_service_module.ai_client, "stream_chat", fake_stream)
+
+    create = client.post("/api/conversations")
+    assert create.status_code == 200
+    conversation_id = create.json()["conversation"]["id"]
+
+    stream_response = client.post(
+        "/api/chat/stream",
+        json={
+            "conversationId": conversation_id,
+            "content": "binary mode test",
+            "enableThinking": True,
+            "enableWebSearch": True,
+            "apiKey": "sk-override",
+            "apiBaseUrl": "https://api.deepseek.com/v1",
+            "apiModel": "deepseek-chat",
+            "apiReasoningModel": "deepseek-reasoner",
+            "streamFormat": "binary",
+        },
+    )
+    assert stream_response.status_code == 200
+    assert stream_response.headers["content-type"].startswith("application/octet-stream")
+    assert stream_response.text == "hello world"
+    assert captured["options"] is not None
+    assert captured["options"].api_key == "sk-override"
+
+
 def test_error_code_for_empty_stream_content():
     create = client.post("/api/conversations")
     conversation_id = create.json()["conversation"]["id"]

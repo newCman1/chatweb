@@ -121,6 +121,7 @@ Request payload can include:
 - `enableThinking: true|false` (user-controlled deep thinking switch)
 - `enableWebSearch: true|false` (optional internet search snippets)
 - `apiKey` / `apiBaseUrl` / `apiModel` / `apiReasoningModel` (optional runtime override from UI settings)
+- backend web-search timeout can be tuned by `CHATWEB_WEB_SEARCH_TIMEOUT_SECONDS` (default `2`)
 
 2. `binary`
 - `Content-Type: application/octet-stream`
