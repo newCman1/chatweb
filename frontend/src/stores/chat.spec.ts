@@ -51,6 +51,7 @@ describe("chat store", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     setChatApi(new StreamingApiStub());
+    window.localStorage.clear();
   });
 
   it("streams assistant response", async () => {
@@ -77,5 +78,13 @@ describe("chat store", () => {
     const assistant = conversationStore.currentMessages.find((m) => m.role === "assistant");
     expect(assistant).toBeTruthy();
     expect(["stopped", "done"]).toContain(assistant?.status);
+  });
+
+  it("persists thinking toggle preference", () => {
+    const chatStore = useChatStore();
+    chatStore.setShowThinking(true);
+    expect(window.localStorage.getItem("chatweb.showThinking")).toBe("1");
+    chatStore.setShowThinking(false);
+    expect(window.localStorage.getItem("chatweb.showThinking")).toBe("0");
   });
 });

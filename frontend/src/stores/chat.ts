@@ -15,6 +15,12 @@ interface ChatState {
 
 const uid = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
+const THINKING_PREF_KEY = "chatweb.showThinking";
+
+function loadThinkingPreference(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(THINKING_PREF_KEY) === "1";
+}
 
 export const useChatStore = defineStore("chat", {
   state: (): ChatState => ({
@@ -23,7 +29,7 @@ export const useChatStore = defineStore("chat", {
     activeAssistantMessageId: null,
     activeAbortController: null,
     errorText: null,
-    showThinking: false
+    showThinking: loadThinkingPreference()
   }),
   actions: {
     async send(content: string) {
@@ -130,6 +136,9 @@ export const useChatStore = defineStore("chat", {
     },
     setShowThinking(show: boolean) {
       this.showThinking = show;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(THINKING_PREF_KEY, show ? "1" : "0");
+      }
     }
   }
 });
