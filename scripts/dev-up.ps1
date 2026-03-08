@@ -97,7 +97,7 @@ try {
     $env:VITE_CHAT_API_MODE = "sse"
     $env:VITE_CHAT_API_BASE_URL = "http://127.0.0.1:8000/api"
     $env:VITE_CHAT_STREAM_FORMAT = "json"
-    npm run dev
+    npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
   } finally {
     Pop-Location
   }
