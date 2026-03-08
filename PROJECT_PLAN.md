@@ -135,14 +135,14 @@ Acceptance:
 - No cross-session message bleed.
 
 ### Stage C: Production Readiness
-- Add environment profiles (`.env.development`, `.env.production`).
+- Add environment profiles (`.env.development`, `.env.production`) for frontend and backend.
 - Add request timeout/retry policy and log redaction for sensitive fields.
-- Add smoke e2e checks for core flow and build/deploy checklist.
+- Add smoke e2e checks for core flow and CI checklist.
 - Keep anonymous access as default product behavior (no login gate).
 
 Acceptance:
-- One-command validation (`test + build`) passes in CI.
-- Key user flow is covered by automated checks.
+- CI validates frontend (`test`, `build`, `e2e smoke`) and backend (`pytest`).
+- Key user flow is covered by automated smoke checks.
 - Logs remain useful for debugging without leaking secrets.
 
 ## 8. Immediate Task Queue
@@ -151,6 +151,9 @@ Acceptance:
 3. Done: Add conversation history fetch integration from Python backend endpoints.
 4. Done: Add retry + timeout handling in frontend API layer.
 5. Done: Expand tests for stream retry and history loading.
+6. Done: Add CI workflow with frontend/backend jobs and Playwright smoke.
+7. Done: Add log redaction in frontend and backend logger pipeline.
+8. Done: Add environment profile files for frontend and backend.
 
 ## 9. Plan Correction Log
 - 2026-03-08: Added top-level project plan document as requested.
@@ -166,3 +169,5 @@ Acceptance:
 - 2026-03-08: Completed Stage A adapter baseline (`SseChatApi`) with env-based mode switch and dual stream parser.
 - 2026-03-08: Completed Stage B frontend-side persistence integration (`listMessages` load on init/select).
 - 2026-03-08: Added frontend API retry/timeout strategy and tests for retry/history behavior.
+- 2026-03-08: Completed Stage C baseline (CI workflow, Playwright smoke, log redaction, env layering).
+- 2026-03-08: Added backend XML logging config loading (`backend/logging.xml`) with startup initialization.

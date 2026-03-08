@@ -1,17 +1,19 @@
 import asyncio
 import json
+import logging
 from collections import defaultdict
 from typing import AsyncGenerator
 from uuid import uuid4
 
 from app.core.config import settings
+from app.core.logging import log_event
 from app.models.chat import ConversationRecord, MessageRecord, utc_now_iso
 
 
 def build_assistant_reply(user_text: str) -> str:
     return (
-        f"你刚刚说的是：{user_text}\n\n"
-        "这是 Python 后端的流式回复示例。你可以直接替换成真实模型调用。"
+        f"You said: {user_text}\n\n"
+        "This is a Python backend streaming demo response. Replace this with real model inference."
     )
 
 
@@ -21,6 +23,7 @@ class ChatService:
         self._messages: dict[str, list[MessageRecord]] = defaultdict(list)
         self._active_abort_flags: dict[str, asyncio.Event] = {}
         self._lock = asyncio.Lock()
+        self._logger = logging.getLogger("chatweb.backend.services.chat")
 
     async def list_conversations(self) -> list[ConversationRecord]:
         async with self._lock:
@@ -32,12 +35,13 @@ class ChatService:
         now = utc_now_iso()
         item = ConversationRecord(
             id=conversation_id,
-            title="新会话",
+            title="New Chat",
             created_at=now,
             updated_at=now,
         )
         async with self._lock:
             self._conversations[conversation_id] = item
+        log_event(self._logger, logging.INFO, "conversation.created", {"conversation_id": conversation_id})
         return item
 
     async def list_messages(self, conversation_id: str) -> list[MessageRecord]:
@@ -58,13 +62,13 @@ class ChatService:
             if conversation_id not in self._conversations:
                 self._conversations[conversation_id] = ConversationRecord(
                     id=conversation_id,
-                    title="新会话",
+                    title="New Chat",
                     created_at=now,
                     updated_at=now,
                 )
             conv = self._conversations[conversation_id]
-            if conv.title == "新会话":
-                conv.title = content.strip()[:24] or "新会话"
+            if conv.title == "New Chat":
+                conv.title = content.strip()[:24] or "New Chat"
             conv.updated_at = now
             self._messages[conversation_id].append(msg)
         return msg
@@ -86,10 +90,9 @@ class ChatService:
         flag = self._active_abort_flags.get(conversation_id)
         if flag:
             flag.set()
+            log_event(self._logger, logging.WARNING, "stream.abort.requested", {"conversation_id": conversation_id})
 
-    async def stream_json(
-        self, conversation_id: str, user_content: str
-    ) -> AsyncGenerator[str, None]:
+    async def stream_json(self, conversation_id: str, user_content: str) -> AsyncGenerator[str, None]:
         abort_flag = asyncio.Event()
         self._active_abort_flags[conversation_id] = abort_flag
         assistant = await self.create_assistant_message_placeholder(conversation_id)
@@ -98,22 +101,32 @@ class ChatService:
             for chunk in chunks:
                 if abort_flag.is_set():
                     await self._mark_stopped(conversation_id, assistant.id)
-                    yield "event: done\ndata: " + json.dumps({"stopped": True}) + "\n\n"
+                    log_event(
+                        self._logger,
+                        logging.WARNING,
+                        "stream.stopped",
+                        {"conversation_id": conversation_id, "message_id": assistant.id},
+                    )
+                    yield 'event: done\ndata: {"stopped":true}\n\n'
                     return
 
                 await self._append_assistant_text(conversation_id, assistant.id, chunk + " ")
-                payload = {"delta": chunk + " "}
-                yield "event: chunk\ndata: " + json.dumps(payload, ensure_ascii=False) + "\n\n"
+                payload = json.dumps({"delta": chunk + " "}, ensure_ascii=False)
+                yield f"event: chunk\ndata: {payload}\n\n"
                 await asyncio.sleep(settings.token_delay_seconds)
 
             await self._mark_done(conversation_id, assistant.id)
-            yield "event: done\ndata: " + json.dumps({"done": True}) + "\n\n"
+            log_event(
+                self._logger,
+                logging.INFO,
+                "stream.done",
+                {"conversation_id": conversation_id, "message_id": assistant.id},
+            )
+            yield 'event: done\ndata: {"done":true}\n\n'
         finally:
             self._active_abort_flags.pop(conversation_id, None)
 
-    async def stream_binary(
-        self, conversation_id: str, user_content: str
-    ) -> AsyncGenerator[bytes, None]:
+    async def stream_binary(self, conversation_id: str, user_content: str) -> AsyncGenerator[bytes, None]:
         abort_flag = asyncio.Event()
         self._active_abort_flags[conversation_id] = abort_flag
         assistant = await self.create_assistant_message_placeholder(conversation_id)
@@ -131,9 +144,7 @@ class ChatService:
         finally:
             self._active_abort_flags.pop(conversation_id, None)
 
-    async def _append_assistant_text(
-        self, conversation_id: str, message_id: str, delta: str
-    ) -> None:
+    async def _append_assistant_text(self, conversation_id: str, message_id: str, delta: str) -> None:
         async with self._lock:
             messages = self._messages.get(conversation_id, [])
             target = next((msg for msg in messages if msg.id == message_id), None)

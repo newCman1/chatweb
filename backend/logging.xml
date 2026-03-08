@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<logging>
+  <root>
+    <level>INFO</level>
+    <format>%(asctime)s %(levelname)s [%(name)s] %(message)s</format>
+  </root>
+</logging>

@@ -10,6 +10,30 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
+## Environment Profiles
+
+Backend reads profile files automatically by `CHATWEB_ENV`:
+
+- `backend/.env.development`
+- `backend/.env.production`
+
+Example:
+
+```powershell
+$env:CHATWEB_ENV="development"
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+## Logging
+
+- Logger includes route + service events.
+- Sensitive fields are redacted (`authorization`, `token`, `password`, `secret`, `api_key`).
+- Log level is controlled by `CHATWEB_LOG_LEVEL`.
+- You can also configure logging from XML:
+  - file: `backend/logging.xml`
+  - loaded automatically on startup
+  - if XML exists, XML level/format takes precedence over env level
+
 ## Layered Structure
 
 - `app/api`: HTTP route layer
@@ -43,4 +67,12 @@ Request example:
   "content": "hello",
   "streamFormat": "json"
 }
+```
+
+## Tests
+
+```powershell
+cd backend
+pip install -r requirements.txt
+pytest tests -q
 ```

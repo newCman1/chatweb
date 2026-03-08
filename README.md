@@ -43,6 +43,7 @@ Run tests and build:
 ```bash
 npm run test
 npm run build
+npm run test:e2e
 ```
 
 ## Backend Run
@@ -106,6 +107,24 @@ npm run dev
 - `POST /api/chat/stream`
 - `POST /api/chat/abort`
 
+## CI and Smoke Test
+
+GitHub Actions workflow: `.github/workflows/ci.yml`
+
+- Frontend: unit tests + build + Playwright smoke
+- Backend: pytest API smoke
+
+Playwright smoke spec:
+- `tests/e2e/chat-smoke.spec.ts`
+
+## Logging and Redaction
+
+- Frontend logger redacts sensitive keys in structured context:
+  - `authorization`, `token`, `password`, `secret`, `apiKey`, `api_key`
+- Backend logger redacts:
+  - `authorization`, `token`, `password`, `secret`, `api_key`, `apikey`
+- Backend logging can be initialized from `backend/logging.xml` on startup.
+
 ## Current Status
 
 - Desktop chat flow is implemented (send/stream/stop/error)
@@ -113,3 +132,4 @@ npm run dev
 - Frontend loads server history via `listMessages` on init/select
 - Frontend API includes timeout + retry strategy
 - Backend FastAPI layered skeleton is implemented
+- CI + e2e smoke + log redaction baseline is implemented

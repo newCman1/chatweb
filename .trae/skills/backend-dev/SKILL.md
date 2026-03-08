@@ -42,6 +42,9 @@ Use this skill whenever the task modifies backend code.
 - Keep no-auth behavior by default.
 - Add route-level error handling for invalid payloads.
 - Keep backend code isolated from frontend framework specifics.
+- Keep backend logger redaction active for sensitive fields.
+- Keep backend smoke tests passing (`pytest tests -q`).
+- Backend startup should load `backend/logging.xml` when present for log level/format.
 
 ## Skill Sync Rule
 
