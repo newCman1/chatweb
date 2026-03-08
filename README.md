@@ -117,6 +117,9 @@ npm run dev
   - `event: chunk` + `data: {"delta":"..."}`
   - `event: done` + `data: {"done":true}` or `{"stopped":true}`
 
+Request payload can include:
+- `enableThinking: true|false` (user-controlled deep thinking switch)
+
 2. `binary`
 - `Content-Type: application/octet-stream`
 - Raw chunked bytes

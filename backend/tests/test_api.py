@@ -24,6 +24,7 @@ def test_conversation_and_stream_json():
         json={
             "conversationId": conversation_id,
             "content": "hello",
+            "enableThinking": True,
             "streamFormat": "json",
         },
     )
@@ -38,6 +39,32 @@ def test_conversation_and_stream_json():
     assistant = next((m for m in messages.json()["messages"] if m["role"] == "assistant"), None)
     assert assistant is not None
     assert "thinking" in assistant
+
+
+def test_stream_without_thinking():
+    create = client.post("/api/conversations")
+    assert create.status_code == 200
+    conversation_id = create.json()["conversation"]["id"]
+
+    stream_response = client.post(
+        "/api/chat/stream",
+        json={
+            "conversationId": conversation_id,
+            "content": "hello without reasoning",
+            "enableThinking": False,
+            "streamFormat": "json",
+        },
+    )
+    assert stream_response.status_code == 200
+    assert "event: thinking" not in stream_response.text
+    assert "event: chunk" in stream_response.text
+    assert "event: done" in stream_response.text
+
+    messages = client.get(f"/api/conversations/{conversation_id}/messages")
+    assert messages.status_code == 200
+    assistant = next((m for m in messages.json()["messages"] if m["role"] == "assistant"), None)
+    assert assistant is not None
+    assert assistant.get("thinking", "") in ("", None)
 
 
 def test_stream_fallback_when_provider_fails(monkeypatch):
@@ -57,6 +84,7 @@ def test_stream_fallback_when_provider_fails(monkeypatch):
         json={
             "conversationId": conversation_id,
             "content": "fallback test",
+            "enableThinking": True,
             "streamFormat": "json",
         },
     )
@@ -73,6 +101,7 @@ def test_error_code_for_empty_stream_content():
         json={
             "conversationId": conversation_id,
             "content": "   ",
+            "enableThinking": True,
             "streamFormat": "json",
         },
     )

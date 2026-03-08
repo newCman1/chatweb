@@ -41,6 +41,7 @@ class ListMessagesResponse(BaseModel):
 class SendMessageRequest(BaseModel):
     conversation_id: str = Field(alias="conversationId")
     content: str
+    enable_thinking: bool = Field(default=False, alias="enableThinking")
     stream_format: StreamFormat = Field(default="json", alias="streamFormat")
 
 

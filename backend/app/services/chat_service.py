@@ -145,7 +145,9 @@ class ChatService:
         else:
             log_event(self._logger, logging.INFO, "stream.abort.no_active_stream", {"conversation_id": conversation_id})
 
-    async def stream_json(self, conversation_id: str, user_content: str) -> AsyncGenerator[str, None]:
+    async def stream_json(
+        self, conversation_id: str, user_content: str, enable_thinking: bool
+    ) -> AsyncGenerator[str, None]:
         abort_flag = asyncio.Event()
         self._active_abort_flags[conversation_id] = abort_flag
         assistant = await self.create_assistant_message_placeholder(conversation_id)
@@ -153,11 +155,17 @@ class ChatService:
             self._logger,
             logging.INFO,
             "stream.json.start",
-            {"conversation_id": conversation_id, "message_id": assistant.id},
+            {
+                "conversation_id": conversation_id,
+                "message_id": assistant.id,
+                "enable_thinking": enable_thinking,
+            },
         )
 
         try:
-            async for event_type, delta in self._stream_with_provider_fallback(conversation_id, user_content):
+            async for event_type, delta in self._stream_with_provider_fallback(
+                conversation_id, user_content, enable_thinking
+            ):
                 if abort_flag.is_set():
                     await self._mark_stopped(conversation_id, assistant.id)
                     log_event(
@@ -223,7 +231,9 @@ class ChatService:
         finally:
             self._active_abort_flags.pop(conversation_id, None)
 
-    async def stream_binary(self, conversation_id: str, user_content: str) -> AsyncGenerator[bytes, None]:
+    async def stream_binary(
+        self, conversation_id: str, user_content: str, enable_thinking: bool
+    ) -> AsyncGenerator[bytes, None]:
         abort_flag = asyncio.Event()
         self._active_abort_flags[conversation_id] = abort_flag
         assistant = await self.create_assistant_message_placeholder(conversation_id)
@@ -232,7 +242,11 @@ class ChatService:
             self._logger,
             logging.INFO,
             "stream.binary.start",
-            {"conversation_id": conversation_id, "message_id": assistant.id},
+            {
+                "conversation_id": conversation_id,
+                "message_id": assistant.id,
+                "enable_thinking": enable_thinking,
+            },
         )
         try:
             for chunk in chunks:
@@ -260,13 +274,15 @@ class ChatService:
             self._active_abort_flags.pop(conversation_id, None)
 
     async def _stream_with_provider_fallback(
-        self, conversation_id: str, user_content: str
+        self, conversation_id: str, user_content: str, enable_thinking: bool
     ) -> AsyncGenerator[tuple[str, str], None]:
         if ai_client.enabled:
             history = await self._build_provider_messages(conversation_id)
             try:
-                async for event in ai_client.stream_chat(history):
-                    yield event
+                async for event_type, delta in ai_client.stream_chat(history):
+                    if event_type == "thinking" and not enable_thinking:
+                        continue
+                    yield (event_type, delta)
                 return
             except httpx.HTTPError as error:
                 log_event(
@@ -289,7 +305,7 @@ class ChatService:
                     {"conversation_id": conversation_id},
                 )
 
-        if settings.thinking_enabled:
+        if enable_thinking and settings.thinking_enabled:
             for token in build_thinking_summary(user_content).split(" "):
                 yield ("thinking", token + " ")
                 await asyncio.sleep(settings.token_delay_seconds)

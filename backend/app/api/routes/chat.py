@@ -87,6 +87,7 @@ async def stream_chat(payload: SendMessageRequest) -> StreamingResponse:
         "chat.stream.request",
         {
             "conversation_id": payload.conversation_id,
+            "enable_thinking": payload.enable_thinking,
             "stream_format": payload.stream_format,
             "content_length": len(content),
         },
@@ -94,11 +95,11 @@ async def stream_chat(payload: SendMessageRequest) -> StreamingResponse:
     await chat_service.append_user_message(payload.conversation_id, content)
     if payload.stream_format == "binary":
         return StreamingResponse(
-            chat_service.stream_binary(payload.conversation_id, content),
+            chat_service.stream_binary(payload.conversation_id, content, payload.enable_thinking),
             media_type="application/octet-stream",
         )
     return StreamingResponse(
-        chat_service.stream_json(payload.conversation_id, content),
+        chat_service.stream_json(payload.conversation_id, content, payload.enable_thinking),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
     )

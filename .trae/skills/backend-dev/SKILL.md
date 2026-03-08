@@ -37,6 +37,8 @@ Use this skill whenever the task modifies backend code.
   - `event: thinking`, `data: {"delta":"..."}` (optional)
   - `event: chunk`, `data: {"delta":"..."}`
   - `event: done`, `data: {"done":true}` (or `{"stopped":true}`)
+- `POST /api/chat/stream` request must support:
+  - `enableThinking: true|false` (user-controlled deep thinking switch)
 - Optional real model provider is configured by:
   - `CHATWEB_AI_API_KEY`, `CHATWEB_AI_MODEL`, `CHATWEB_AI_BASE_URL`
   - fallback to local mock stream when API key is empty

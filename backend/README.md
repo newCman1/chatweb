@@ -80,6 +80,7 @@ Request example:
 {
   "conversationId": "xxx",
   "content": "hello",
+  "enableThinking": true,
   "streamFormat": "json"
 }
 ```
