@@ -44,4 +44,38 @@ describe("SseChatApi", () => {
     }
     expect(out.join("")).toBe("hello world");
   });
+
+  it("retries initial request on transient failure", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce({
+        ok: true,
+        body: textStream('event: done\ndata: {"done":true}\n\n')
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const api = new SseChatApi({
+      baseUrl: "http://127.0.0.1:8000/api",
+      streamFormat: "json",
+      retryTimes: 1
+    });
+    const messages: Message[] = [
+      {
+        id: "u1",
+        conversationId: "c1",
+        role: "user",
+        content: "hello",
+        status: "done",
+        createdAt: new Date().toISOString()
+      }
+    ];
+
+    const chunks: string[] = [];
+    for await (const item of api.streamReply({ conversationId: "c1", messages })) {
+      if (item.delta) chunks.push(item.delta);
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(chunks).toHaveLength(0);
+  });
 });

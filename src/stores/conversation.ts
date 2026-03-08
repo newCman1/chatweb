@@ -13,7 +13,7 @@ const now = () => new Date().toISOString();
 
 function titleFromMessage(content: string): string {
   const cleaned = content.replace(/\s+/g, " ").trim();
-  return cleaned.slice(0, 24) || "新会话";
+  return cleaned.slice(0, 24) || "New Chat";
 }
 
 export const useConversationStore = defineStore("conversation", {
@@ -39,6 +39,7 @@ export const useConversationStore = defineStore("conversation", {
         logger.info("conversation.init", { total: items.length });
         if (!this.currentConversationId && items.length > 0) {
           this.currentConversationId = items[0].id;
+          await this.ensureMessagesLoaded(items[0].id);
         }
       } catch (err) {
         logger.error("conversation.init.failed", {
@@ -55,11 +56,9 @@ export const useConversationStore = defineStore("conversation", {
       logger.info("conversation.created", { conversationId: conversation.id });
       return conversation;
     },
-    selectConversation(conversationId: string) {
+    async selectConversation(conversationId: string) {
       this.currentConversationId = conversationId;
-      if (!this.messagesByConversation[conversationId]) {
-        this.messagesByConversation[conversationId] = [];
-      }
+      await this.ensureMessagesLoaded(conversationId);
       logger.debug("conversation.selected", { conversationId });
     },
     addMessage(message: Message) {
@@ -70,7 +69,7 @@ export const useConversationStore = defineStore("conversation", {
       const conversation = this.conversations.find((c) => c.id === message.conversationId);
       if (conversation) {
         conversation.updatedAt = now();
-        if (message.role === "user" && conversation.title === "新会话") {
+        if (message.role === "user" && conversation.title === "New Chat") {
           conversation.title = titleFromMessage(message.content);
         }
       }
@@ -85,6 +84,19 @@ export const useConversationStore = defineStore("conversation", {
       const target = messages.find((msg) => msg.id === messageId);
       if (target) {
         Object.assign(target, patch);
+      }
+    },
+    async ensureMessagesLoaded(conversationId: string) {
+      if (this.messagesByConversation[conversationId]) return;
+      try {
+        const messages = await chatApi.listMessages(conversationId);
+        this.messagesByConversation[conversationId] = messages;
+      } catch (err) {
+        logger.error("conversation.messages.load.failed", {
+          conversationId,
+          error: err instanceof Error ? err.message : "unknown"
+        });
+        this.messagesByConversation[conversationId] = [];
       }
     }
   }

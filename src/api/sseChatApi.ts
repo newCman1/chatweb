@@ -4,6 +4,8 @@ import type { IChatApi, StreamReplyInput } from "./chatApi";
 interface SseChatApiOptions {
   baseUrl: string;
   streamFormat: "json" | "binary";
+  requestTimeoutMs?: number;
+  retryTimes?: number;
 }
 
 const headers = {
@@ -13,27 +15,35 @@ const headers = {
 export class SseChatApi implements IChatApi {
   private readonly baseUrl: string;
   private readonly streamFormat: "json" | "binary";
+  private readonly requestTimeoutMs: number;
+  private readonly retryTimes: number;
   private readonly activeAbortMap = new Map<string, AbortController>();
 
   constructor(options: SseChatApiOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
     this.streamFormat = options.streamFormat;
+    this.requestTimeoutMs = options.requestTimeoutMs ?? 10_000;
+    this.retryTimes = options.retryTimes ?? 1;
   }
 
   async listConversations(): Promise<Conversation[]> {
-    const response = await fetch(`${this.baseUrl}/conversations`);
-    if (!response.ok) throw new Error(`listConversations failed: ${response.status}`);
+    const response = await this.requestWithRetry(`${this.baseUrl}/conversations`);
     const data = (await response.json()) as { conversations: Conversation[] };
     return data.conversations ?? [];
   }
 
   async createConversation(): Promise<Conversation> {
-    const response = await fetch(`${this.baseUrl}/conversations`, {
+    const response = await this.requestWithRetry(`${this.baseUrl}/conversations`, {
       method: "POST"
     });
-    if (!response.ok) throw new Error(`createConversation failed: ${response.status}`);
     const data = (await response.json()) as { conversation: Conversation };
     return data.conversation;
+  }
+
+  async listMessages(conversationId: string): Promise<Message[]> {
+    const response = await this.requestWithRetry(`${this.baseUrl}/conversations/${conversationId}/messages`);
+    const data = (await response.json()) as { messages: Message[] };
+    return data.messages ?? [];
   }
 
   async *streamReply(input: StreamReplyInput): AsyncGenerator<StreamChunk> {
@@ -48,18 +58,22 @@ export class SseChatApi implements IChatApi {
     }
 
     try {
-      const response = await fetch(`${this.baseUrl}/chat/stream`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          conversationId: input.conversationId,
-          content,
-          streamFormat: this.streamFormat
-        }),
-        signal: controller.signal
-      });
-      if (!response.ok || !response.body) {
-        throw new Error(`streamReply failed: ${response.status}`);
+      const response = await this.requestWithRetry(
+        `${this.baseUrl}/chat/stream`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            conversationId: input.conversationId,
+            content,
+            streamFormat: this.streamFormat
+          }),
+          signal: controller.signal
+        },
+        this.retryTimes
+      );
+      if (!response.body) {
+        throw new Error("streamReply failed: empty body");
       }
 
       if (this.streamFormat === "binary") {
@@ -90,6 +104,51 @@ export class SseChatApi implements IChatApi {
         body: JSON.stringify({ conversationId })
       });
     }
+  }
+
+  private async requestWithRetry(
+    url: string,
+    init?: RequestInit,
+    retryTimes: number = this.retryTimes
+  ): Promise<Response> {
+    let lastError: unknown;
+    for (let attempt = 0; attempt <= retryTimes; attempt++) {
+      try {
+        const response = await this.fetchWithTimeout(url, init);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response;
+      } catch (error) {
+        lastError = error;
+        if (attempt === retryTimes) break;
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error("Request failed");
+  }
+
+  private async fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+    const timeoutController = new AbortController();
+    const timeout = setTimeout(() => timeoutController.abort(), this.requestTimeoutMs);
+    const signal = this.mergeSignals(init?.signal, timeoutController.signal);
+    try {
+      return await fetch(url, {
+        ...init,
+        signal
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  private mergeSignals(a?: AbortSignal | null, b?: AbortSignal | null): AbortSignal | undefined {
+    if (!a) return b ?? undefined;
+    if (!b) return a;
+    const merged = new AbortController();
+    const onAbort = () => merged.abort();
+    a.addEventListener("abort", onAbort, { once: true });
+    b.addEventListener("abort", onAbort, { once: true });
+    return merged.signal;
   }
 
   private async *readBinaryStream(stream: ReadableStream<Uint8Array>): AsyncGenerator<StreamChunk> {

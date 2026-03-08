@@ -94,7 +94,7 @@ export const useChatStore = defineStore("chat", {
           status: isAbort ? "stopped" : "error"
         });
         if (!isAbort) {
-          this.errorText = "生成失败，请重试。";
+          this.errorText = "Generation failed, please retry.";
           logger.error("chat.stream.error", {
             conversationId,
             assistantMessageId,

@@ -18,7 +18,7 @@ async function onCreateConversation() {
 }
 
 function onSelectConversation(conversationId: string) {
-  conversationStore.selectConversation(conversationId);
+  void conversationStore.selectConversation(conversationId);
 }
 
 async function onSend(content: string) {

@@ -20,10 +20,14 @@ class StreamingApiStub implements IChatApi {
     const now = new Date().toISOString();
     return {
       id: crypto.randomUUID(),
-      title: "新会话",
+      title: "New Chat",
       createdAt: now,
       updatedAt: now
     } satisfies Conversation;
+  }
+
+  async listMessages() {
+    return [];
   }
 
   async *streamReply(input: StreamReplyInput): AsyncGenerator<StreamChunk> {

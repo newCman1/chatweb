@@ -1,4 +1,4 @@
-import type { Conversation, StreamChunk } from "@/types/chat";
+import type { Conversation, Message, StreamChunk } from "@/types/chat";
 import type { IChatApi, StreamReplyInput } from "./chatApi";
 import { logger } from "@/utils/logger";
 
@@ -15,14 +15,14 @@ function splitToChunks(text: string): string[] {
 
 function buildAssistantReply(userText: string): string {
   const base =
-    "这是一个前端 mock 流式回复。后端接入后，只需要替换 API 适配器，不需要改动页面组件。";
-  const tips =
-    "建议下一步加入真实 SSE 接口、会话持久化和错误码映射。";
-  return `你刚刚说的是：${userText}\n\n${base}\n${tips}`;
+    "This is a frontend mock streaming response. Replace only the API adapter after backend integration.";
+  const tips = "Next step: wire real SSE endpoint and server-side persistence.";
+  return `You said: ${userText}\n\n${base}\n${tips}`;
 }
 
 export class MockChatApi implements IChatApi {
   private conversations: Conversation[] = [];
+  private messagesByConversation: Record<string, Message[]> = {};
   private activeAbortMap = new Map<string, AbortController>();
   private tokenDelayMs: number;
 
@@ -39,13 +39,18 @@ export class MockChatApi implements IChatApi {
     const now = new Date().toISOString();
     const conversation: Conversation = {
       id: uid(),
-      title: "新会话",
+      title: "New Chat",
       createdAt: now,
       updatedAt: now
     };
     this.conversations.unshift(conversation);
+    this.messagesByConversation[conversation.id] = [];
     logger.info("api.createConversation", { conversationId: conversation.id });
     return conversation;
+  }
+
+  async listMessages(conversationId: string): Promise<Message[]> {
+    return [...(this.messagesByConversation[conversationId] ?? [])];
   }
 
   async *streamReply(input: StreamReplyInput): AsyncGenerator<StreamChunk> {
@@ -53,7 +58,12 @@ export class MockChatApi implements IChatApi {
     const internal = new AbortController();
     this.activeAbortMap.set(input.conversationId, internal);
     logger.info("api.stream.start", { conversationId: input.conversationId });
+
     const userMessage = [...input.messages].reverse().find((m) => m.role === "user");
+    if (userMessage) {
+      this.pushMessage(input.conversationId, userMessage);
+    }
+
     const fullText = buildAssistantReply(userMessage?.content ?? "");
     const chunks = splitToChunks(fullText);
 
@@ -68,7 +78,6 @@ export class MockChatApi implements IChatApi {
         yield { delta: chunk };
         await wait(this.tokenDelayMs);
       }
-
       logger.info("api.stream.done", { conversationId: input.conversationId });
       yield { delta: "", done: true };
     } finally {
@@ -82,6 +91,16 @@ export class MockChatApi implements IChatApi {
       controller.abort();
       this.activeAbortMap.delete(conversationId);
       logger.warn("api.stream.abort-request", { conversationId });
+    }
+  }
+
+  private pushMessage(conversationId: string, message: Message) {
+    if (!this.messagesByConversation[conversationId]) {
+      this.messagesByConversation[conversationId] = [];
+    }
+    const exists = this.messagesByConversation[conversationId].some((m) => m.id === message.id);
+    if (!exists) {
+      this.messagesByConversation[conversationId].push(message);
     }
   }
 }

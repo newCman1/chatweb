@@ -1,52 +1,53 @@
 # ChatWeb
 
-ChatWeb 是一个桌面优先的 ChatGPT 风格项目，当前包含：
-- 前端：`Vue 3 + Vite + TypeScript + Pinia`
-- 后端：`Python + FastAPI`（无登录，开箱即用）
+ChatWeb is a desktop-first ChatGPT-style project.
 
-## 目录结构
+- Frontend: Vue 3 + Vite + TypeScript + Pinia
+- Backend: Python + FastAPI (open access, no login required)
+
+## Project Layout
 
 ```text
-src/                      # 前端
-backend/                  # 后端
-.trae/skills/             # 项目技能文档（前端/后端/git）
-PROJECT_PLAN.md           # 项目规划与阶段状态
+src/                      frontend app
+backend/                  python backend app
+.trae/skills/             project skills (frontend/backend/git)
+PROJECT_PLAN.md           project plan and progress
 ```
 
-前端分层：
-- `src/api`：前端 API 适配器（mock / sse）
-- `src/stores`：状态管理
-- `src/components`：组件
-- `src/views`：页面组装
-- `src/types`：共享类型
+Frontend layers:
+- `src/api`: frontend API adapters (`mock` and `sse`)
+- `src/stores`: state management
+- `src/components`: UI components
+- `src/views`: page composition
+- `src/types`: shared frontend types
 
-后端分层：
-- `backend/app/api`：路由层
-- `backend/app/services`：业务与流式编排
-- `backend/app/models`：内部记录模型
-- `backend/app/schemas`：请求响应模型
-- `backend/app/db`：持久化占位层
-- `backend/app/core`：配置与基础设施
+Backend layers:
+- `backend/app/api`: route/controller layer
+- `backend/app/services`: business and stream orchestration
+- `backend/app/models`: internal records
+- `backend/app/schemas`: request/response schemas
+- `backend/app/db`: persistence placeholder
+- `backend/app/core`: config and shared infra
 
-## 前端运行
+## Frontend Run
 
-要求：Node.js 24+（当前验证版本 `v24.14.0`）
+Requirements: Node.js 24+ (verified with `v24.14.0`)
 
 ```bash
 npm install --no-audit --no-fund
 npm run dev
 ```
 
-测试与构建：
+Run tests and build:
 
 ```bash
 npm run test
 npm run build
 ```
 
-## 后端运行
+## Backend Run
 
-要求：Python 3.9+
+Requirements: Python 3.9+
 
 ```powershell
 cd backend
@@ -56,44 +57,48 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-健康检查：
+Health check:
 
 ```text
 GET http://127.0.0.1:8000/health
 ```
 
-## 前后端联调配置
+## Frontend/Backend Integration Config
 
-前端支持两种 API 模式，通过环境变量控制：
+The frontend supports two API modes, controlled by env vars:
 
 - `VITE_CHAT_API_MODE=mock|sse`
 - `VITE_CHAT_API_BASE_URL=http://127.0.0.1:8000/api`
 - `VITE_CHAT_STREAM_FORMAT=json|binary`
+- `VITE_CHAT_API_TIMEOUT_MS=10000`
+- `VITE_CHAT_API_RETRY_TIMES=1`
 
-示例（PowerShell 临时设置）：
+PowerShell example:
 
 ```powershell
 $env:VITE_CHAT_API_MODE="sse"
 $env:VITE_CHAT_API_BASE_URL="http://127.0.0.1:8000/api"
 $env:VITE_CHAT_STREAM_FORMAT="json"
+$env:VITE_CHAT_API_TIMEOUT_MS="10000"
+$env:VITE_CHAT_API_RETRY_TIMES="1"
 npm run dev
 ```
 
-## 流式协议
+## Streaming Protocol
 
-`POST /api/chat/stream` 支持两种格式：
+`POST /api/chat/stream` supports:
 
-1. `json`（默认）
+1. `json` (default)
 - `Content-Type: text/event-stream`
-- 事件格式：
+- Events:
   - `event: chunk` + `data: {"delta":"..."}`
-  - `event: done` + `data: {"done":true}` 或 `{"stopped":true}`
+  - `event: done` + `data: {"done":true}` or `{"stopped":true}`
 
 2. `binary`
 - `Content-Type: application/octet-stream`
-- 按字节块输出内容
+- Raw chunked bytes
 
-## 后端接口清单
+## Backend API Endpoints
 
 - `GET /api/conversations`
 - `POST /api/conversations`
@@ -101,9 +106,10 @@ npm run dev
 - `POST /api/chat/stream`
 - `POST /api/chat/abort`
 
-## 当前状态
+## Current Status
 
-- 前端桌面版聊天流程已完成（含 stop/error/stream）
-- 前端 `SseChatApi` 已接入并支持 `json/binary` 双模式
-- 后端 FastAPI 分层骨架已完成，支持会话与流式回复
-- 默认无登录验证
+- Desktop chat flow is implemented (send/stream/stop/error)
+- Frontend `SseChatApi` supports `json` and `binary` modes
+- Frontend loads server history via `listMessages` on init/select
+- Frontend API includes timeout + retry strategy
+- Backend FastAPI layered skeleton is implemented

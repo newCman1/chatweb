@@ -7,7 +7,9 @@ function createDefaultApi(): IChatApi {
   if (apiConfig.mode === "sse") {
     return new SseChatApi({
       baseUrl: apiConfig.baseUrl,
-      streamFormat: apiConfig.streamFormat
+      streamFormat: apiConfig.streamFormat,
+      requestTimeoutMs: apiConfig.requestTimeoutMs,
+      retryTimes: apiConfig.retryTimes
     });
   }
   return new MockChatApi();

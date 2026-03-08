@@ -68,6 +68,8 @@ Runtime env keys:
 - `VITE_CHAT_API_MODE=mock|sse`
 - `VITE_CHAT_API_BASE_URL=http://127.0.0.1:8000/api`
 - `VITE_CHAT_STREAM_FORMAT=json|binary`
+- `VITE_CHAT_API_TIMEOUT_MS=10000`
+- `VITE_CHAT_API_RETRY_TIMES=1`
 
 ## 6. Environment Setup and Verification
 - OS: Windows (PowerShell).
@@ -100,7 +102,7 @@ npm run build
 
 ### Current Verification Result (2026-03-08)
 - Dependency installation: success.
-- Unit/component tests: success (`3` files, `6` tests passed).
+- Unit/component tests: success (`4` files, `9` tests passed).
 - Production build: success (`vite build` completed, `dist/` generated).
 - Dev server: start command can listen on `127.0.0.1:5173`.
 
@@ -146,9 +148,9 @@ Acceptance:
 ## 8. Immediate Task Queue
 1. Done: Implement `SseChatApi` in frontend and wire adapter switch.
 2. Done: Define frontend parsing rules for `json` and `binary` stream mode.
-3. Add conversation history fetch integration from Python backend endpoints.
-4. Add retry + timeout handling in frontend API layer.
-5. Expand integration tests for stream abort/error and history loading.
+3. Done: Add conversation history fetch integration from Python backend endpoints.
+4. Done: Add retry + timeout handling in frontend API layer.
+5. Done: Expand tests for stream retry and history loading.
 
 ## 9. Plan Correction Log
 - 2026-03-08: Added top-level project plan document as requested.
@@ -162,3 +164,5 @@ Acceptance:
 - 2026-03-08: Added dual stream transport plan (`json` SSE / `binary` chunked) per runtime needs.
 - 2026-03-08: Added dedicated frontend/backend skills so each side can be developed without repeatedly reading the full project plan.
 - 2026-03-08: Completed Stage A adapter baseline (`SseChatApi`) with env-based mode switch and dual stream parser.
+- 2026-03-08: Completed Stage B frontend-side persistence integration (`listMessages` load on init/select).
+- 2026-03-08: Added frontend API retry/timeout strategy and tests for retry/history behavior.
