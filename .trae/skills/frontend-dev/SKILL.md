@@ -34,6 +34,10 @@ Use this skill whenever the task modifies frontend code.
   - `VITE_CHAT_API_BASE_URL=http://127.0.0.1:8000/api`
   - `VITE_CHAT_STREAM_FORMAT=json|binary`
 - `SseChatApi` must keep compatibility with backend stream contract.
+- SSE json stream events include:
+  - `event: thinking` + `data: {"delta":"..."}`
+  - `event: chunk` + `data: {"delta":"..."}`
+  - `event: done`
 - Preserve fallback to mock mode for local UI debugging.
 - Frontend API adapter must support:
   - conversation history loading (`listMessages`) on init/select
@@ -42,6 +46,7 @@ Use this skill whenever the task modifies frontend code.
 ## Delivery Rules
 
 - Keep desktop-first chat flow stable.
+- Keep thinking UI optional (header toggle controls whether thinking panels are rendered).
 - Preserve `IChatApi` boundary and adapter injection pattern.
 - Add or update tests when behavior changes.
 - Keep frontend logger redaction enabled for sensitive fields.

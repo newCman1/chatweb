@@ -34,8 +34,12 @@ Use this skill whenever the task modifies backend code.
   - `binary`: chunked (`application/octet-stream`)
 - Keep frontend compatibility for conversation/message fields.
 - Keep `json` mode event shape stable:
+  - `event: thinking`, `data: {"delta":"..."}` (optional)
   - `event: chunk`, `data: {"delta":"..."}`
   - `event: done`, `data: {"done":true}` (or `{"stopped":true}`)
+- Optional real model provider is configured by:
+  - `CHATWEB_AI_API_KEY`, `CHATWEB_AI_MODEL`, `CHATWEB_AI_BASE_URL`
+  - fallback to local mock stream when API key is empty
 
 ## Delivery Rules
 

@@ -36,6 +36,8 @@
    - Optimistic user message append
    - Assistant streaming chunk append
    - Stop generation and error handling
+   - Assistant thinking stream append (`thinking` event)
+   - Header toggle to show/hide thinking panel
 3. Test baseline:
    - Store unit tests for conversation/chat flows
    - Component test for input keyboard behavior
@@ -122,6 +124,7 @@ Acceptance:
 - Stream reply renders token-by-token from backend.
 - Stop action cancels active backend stream.
 - Error messages are deterministic and user-visible.
+- Thinking stream can be toggled visible/invisible in UI.
 
 ### Stage B: Conversation Persistence
 - Add backend conversation endpoints mapping:
@@ -157,6 +160,7 @@ Acceptance:
 6. Done: Add CI workflow with frontend/backend jobs.
 7. Done: Add log redaction in frontend and backend logger pipeline.
 8. Done: Add environment profile files for frontend and backend.
+9. Done: Add optional OpenAI-compatible backend provider adapter and thinking stream.
 
 ## 9. Plan Correction Log
 - 2026-03-08: Added top-level project plan document as requested.
@@ -175,3 +179,5 @@ Acceptance:
 - 2026-03-08: Completed Stage C baseline (CI workflow, log redaction, env layering).
 - 2026-03-08: Added backend XML logging config loading (`backend/logging.xml`) with startup initialization.
 - 2026-03-08: Migrated frontend root into `frontend/` and aligned docs/skills/CI paths.
+- 2026-03-08: Added thinking stream (`event: thinking`) end-to-end and desktop UI toggle for optional display.
+- 2026-03-08: Added optional OpenAI-compatible backend adapter via `CHATWEB_AI_*` config, with mock fallback.

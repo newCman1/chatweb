@@ -93,6 +93,7 @@ npm run dev
 1. `json` (default)
 - `Content-Type: text/event-stream`
 - Events:
+  - `event: thinking` + `data: {"delta":"..."}` (optional reasoning summary stream)
   - `event: chunk` + `data: {"delta":"..."}`
   - `event: done` + `data: {"done":true}` or `{"stopped":true}`
 
@@ -107,6 +108,17 @@ npm run dev
 - `GET /api/conversations/{conversation_id}/messages`
 - `POST /api/chat/stream`
 - `POST /api/chat/abort`
+
+## Optional AI Provider (Backend)
+
+If you configure an API key, backend will stream from an OpenAI-compatible `/chat/completions` endpoint. Without key, it falls back to built-in mock stream.
+
+- `CHATWEB_AI_API_KEY=`
+- `CHATWEB_AI_MODEL=gpt-4.1-mini`
+- `CHATWEB_AI_BASE_URL=https://api.openai.com/v1`
+- `CHATWEB_AI_TIMEOUT_SECONDS=60`
+- `CHATWEB_AI_REASONING_EFFORT=medium`
+- `CHATWEB_THINKING_ENABLED=true` (fallback/mock thinking stream switch)
 
 ## CI
 
