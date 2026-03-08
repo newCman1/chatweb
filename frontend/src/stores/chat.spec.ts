@@ -122,6 +122,24 @@ class StreamingApiStub implements IChatApi {
       tasks: []
     };
   }
+
+  async listSupervisors(conversationId: string): Promise<SupervisorRun[]> {
+    const now = new Date().toISOString();
+    return [
+      {
+        id: "run-history-1",
+        conversationId,
+        objective: "history objective",
+        planText: "",
+        primaryName: "Primary AI",
+        workerName: "Worker AI",
+        status: "completed",
+        summary: "ok",
+        createdAt: now,
+        tasks: []
+      }
+    ];
+  }
 }
 
 describe("chat store", () => {
@@ -252,5 +270,18 @@ describe("chat store", () => {
     const assistantMessages = conversationStore.currentMessages.filter((item) => item.role === "assistant");
     expect(assistantMessages.some((item) => item.content.includes("[Worker AI]"))).toBe(true);
     expect(assistantMessages.some((item) => item.content.includes("[Primary AI]"))).toBe(true);
+  });
+
+  it("loads supervisor run history for conversation", async () => {
+    const conversationStore = useConversationStore();
+    await conversationStore.createConversation();
+    const chatStore = useChatStore();
+    const conversationId = conversationStore.currentConversationId as string;
+    await chatStore.loadSupervisorRuns(conversationId);
+    expect(chatStore.supervisorRunsByConversation[conversationId]).toHaveLength(1);
+    expect(chatStore.supervisorRunsByConversation[conversationId][0].id).toBe("run-history-1");
+    expect(chatStore.supervisorCurrentRun?.id).toBe("run-history-1");
+    expect(chatStore.supervisorStatus).toBe("completed");
+    expect(chatStore.supervisorRunId).toBeNull();
   });
 });

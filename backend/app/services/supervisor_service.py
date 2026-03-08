@@ -10,11 +10,39 @@ import httpx
 from app.core.config import settings
 from app.core.errors import AppError
 from app.core.logging import log_event
+from app.db.session import db
 from app.models.chat import utc_now_iso
 from app.models.supervisor import SupervisorRunRecord, SupervisorTaskRecord
 from app.schemas.supervisor import SupervisorRunRequest
 from app.services.ai_client import AIRequestOptions, ai_client
 from app.services.chat_service import chat_service
+
+
+def _run_from_row(row, tasks: list[SupervisorTaskRecord]) -> SupervisorRunRecord:
+    return SupervisorRunRecord(
+        id=row["id"],
+        conversation_id=row["conversation_id"],
+        objective=row["objective"],
+        plan_text=row["plan_text"],
+        primary_name=row["primary_name"],
+        worker_name=row["worker_name"],
+        status=row["status"],
+        summary=row["summary"],
+        created_at=row["created_at"],
+        tasks=tasks,
+    )
+
+
+def _task_from_row(row) -> SupervisorTaskRecord:
+    return SupervisorTaskRecord(
+        index=row["task_index"],
+        title=row["title"],
+        worker_output=row["worker_output"],
+        review_verdict=row["review_verdict"],
+        review_feedback=row["review_feedback"],
+        status=row["status"],
+        retries=row["retries"],
+    )
 
 
 class SupervisorService:
@@ -31,6 +59,7 @@ class SupervisorService:
         record = self._new_run_record(run_id, payload, objective)
         async with self._lock:
             self._runs[run_id] = record
+        await self._persist_run(record)
 
         abort_flag = asyncio.Event()
         log_event(
@@ -45,6 +74,7 @@ class SupervisorService:
             },
         )
         await self._execute_pipeline(record, payload, abort_flag)
+        await self._persist_run(record)
         log_event(
             self._logger,
             logging.INFO,
@@ -63,6 +93,7 @@ class SupervisorService:
             self._runs[run_id] = record
             self._abort_flags[run_id] = abort_flag
             self._run_tasks[run_id] = asyncio.create_task(self._execute_in_background(run_id, payload, abort_flag))
+        await self._persist_run(record)
 
         log_event(
             self._logger,
@@ -73,37 +104,58 @@ class SupervisorService:
         return record
 
     async def abort(self, run_id: str) -> SupervisorRunRecord:
-        async with self._lock:
-            row = self._runs.get(run_id)
-            if not row:
-                raise AppError("SUPERVISOR_RUN_NOT_FOUND", f"Run not found: {run_id}", status_code=404)
-            if row.status in {"completed", "failed", "aborted"}:
-                return row
+        row = await self.get_run(run_id)
+        if row.status in {"completed", "failed", "aborted"}:
+            return row
 
-            row.status = "aborted"
-            if not row.summary:
-                row.summary = "Run aborted by user."
-            for item in row.tasks:
-                if item.status == "running":
-                    item.status = "aborted"
-                    if not item.review_feedback:
-                        item.review_feedback = "Aborted by user."
+        row.status = "aborted"
+        if not row.summary:
+            row.summary = "Run aborted by user."
+        for item in row.tasks:
+            if item.status == "running":
+                item.status = "aborted"
+                if not item.review_feedback:
+                    item.review_feedback = "Aborted by user."
+
+        async with self._lock:
             flag = self._abort_flags.get(run_id)
             task = self._run_tasks.get(run_id)
+            self._runs[run_id] = row
 
         if flag:
             flag.set()
         if task and not task.done():
             task.cancel()
-
+        await self._persist_run(row)
         log_event(self._logger, logging.WARNING, "supervisor.run.abort", {"run_id": run_id})
         return row
 
-    def get_run(self, run_id: str) -> SupervisorRunRecord:
-        row = self._runs.get(run_id)
+    async def get_run(self, run_id: str) -> SupervisorRunRecord:
+        cached = self._runs.get(run_id)
+        if cached:
+            return cached
+        row = await self._load_run(run_id)
         if not row:
             raise AppError("SUPERVISOR_RUN_NOT_FOUND", f"Run not found: {run_id}", status_code=404)
         return row
+
+    async def list_runs(self, conversation_id: str, limit: int = 20) -> list[SupervisorRunRecord]:
+        rows = await db.fetchall(
+            """
+            SELECT id, conversation_id, objective, plan_text, primary_name, worker_name,
+                   status, summary, created_at
+            FROM supervisor_runs
+            WHERE conversation_id = ?
+            ORDER BY created_at DESC
+            LIMIT ?;
+            """,
+            (conversation_id, max(1, min(100, limit))),
+        )
+        values: list[SupervisorRunRecord] = []
+        for row in rows:
+            tasks = await self._load_tasks(row["id"])
+            values.append(_run_from_row(row, tasks))
+        return values
 
     async def _execute_in_background(
         self,
@@ -111,7 +163,7 @@ class SupervisorService:
         payload: SupervisorRunRequest,
         abort_flag: asyncio.Event,
     ) -> None:
-        row = self.get_run(run_id)
+        row = await self.get_run(run_id)
         try:
             await self._execute_pipeline(row, payload, abort_flag)
         except asyncio.CancelledError:
@@ -143,7 +195,9 @@ class SupervisorService:
                 {"run_id": run_id, "error": str(error)},
             )
         finally:
+            await self._persist_run(row)
             async with self._lock:
+                self._runs[run_id] = row
                 self._run_tasks.pop(run_id, None)
                 self._abort_flags.pop(run_id, None)
 
@@ -161,6 +215,7 @@ class SupervisorService:
             self._raise_if_aborted(abort_flag)
             plan_text = await self._primary_plan(row.objective, shared_history, payload.max_tasks)
         row.plan_text = plan_text
+        await self._persist_run(row)
 
         task_titles = self._extract_tasks(plan_text, payload.max_tasks)
         if not task_titles:
@@ -179,6 +234,7 @@ class SupervisorService:
                 retries=0,
             )
             row.tasks.append(item)
+            await self._persist_run(row)
 
             worker_output = await self._worker_execute(title, row.objective, row.plan_text, shared_history)
             self._raise_if_aborted(abort_flag)
@@ -200,6 +256,7 @@ class SupervisorService:
             item.review_verdict = verdict
             item.review_feedback = feedback
             item.status = "completed" if verdict == "PASS" else "failed"
+            await self._persist_run(row)
             log_event(
                 self._logger,
                 logging.INFO,
@@ -215,6 +272,7 @@ class SupervisorService:
         self._raise_if_aborted(abort_flag)
         row.summary = await self._primary_summary(row.objective, row.plan_text, row.tasks)
         row.status = "completed" if all(item.status == "completed" for item in row.tasks) else "failed"
+        await self._persist_run(row)
 
     def _validate_payload(self, payload: SupervisorRunRequest) -> str:
         objective = payload.objective.strip()
@@ -403,6 +461,95 @@ class SupervisorService:
             snippet = item.content.strip().replace("\n", " ")
             lines.append(f"[{item.role}] {snippet[:240]}")
         return "\n".join(lines)
+
+    async def _persist_run(self, row: SupervisorRunRecord) -> None:
+        now = utc_now_iso()
+        statements = [
+            (
+                """
+                INSERT INTO supervisor_runs
+                (id, conversation_id, objective, plan_text, primary_name, worker_name,
+                 status, summary, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    conversation_id=excluded.conversation_id,
+                    objective=excluded.objective,
+                    plan_text=excluded.plan_text,
+                    primary_name=excluded.primary_name,
+                    worker_name=excluded.worker_name,
+                    status=excluded.status,
+                    summary=excluded.summary,
+                    updated_at=excluded.updated_at;
+                """,
+                (
+                    row.id,
+                    row.conversation_id,
+                    row.objective,
+                    row.plan_text,
+                    row.primary_name,
+                    row.worker_name,
+                    row.status,
+                    row.summary,
+                    row.created_at,
+                    now,
+                ),
+            ),
+            ("DELETE FROM supervisor_tasks WHERE run_id = ?;", (row.id,)),
+        ]
+        tasks_payload = [
+            (
+                row.id,
+                item.index,
+                item.title,
+                item.worker_output,
+                item.review_verdict,
+                item.review_feedback,
+                item.status,
+                item.retries,
+                row.created_at,
+                now,
+            )
+            for item in row.tasks
+        ]
+        many = [
+            (
+                """
+                INSERT INTO supervisor_tasks
+                (run_id, task_index, title, worker_output, review_verdict, review_feedback,
+                 status, retries, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                """,
+                tasks_payload,
+            )
+        ]
+        await db.transaction(statements, many)
+
+    async def _load_run(self, run_id: str) -> Optional[SupervisorRunRecord]:
+        row = await db.fetchone(
+            """
+            SELECT id, conversation_id, objective, plan_text, primary_name, worker_name,
+                   status, summary, created_at
+            FROM supervisor_runs
+            WHERE id = ?;
+            """,
+            (run_id,),
+        )
+        if not row:
+            return None
+        tasks = await self._load_tasks(run_id)
+        return _run_from_row(row, tasks)
+
+    async def _load_tasks(self, run_id: str) -> list[SupervisorTaskRecord]:
+        rows = await db.fetchall(
+            """
+            SELECT task_index, title, worker_output, review_verdict, review_feedback, status, retries
+            FROM supervisor_tasks
+            WHERE run_id = ?
+            ORDER BY task_index ASC;
+            """,
+            (run_id,),
+        )
+        return [_task_from_row(row) for row in rows]
 
 
 supervisor_service = SupervisorService()

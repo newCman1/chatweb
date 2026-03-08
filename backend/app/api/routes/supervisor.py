@@ -1,9 +1,10 @@
 import logging
 
 from fastapi import APIRouter
+from fastapi import Query
 
 from app.core.logging import get_logger, log_event
-from app.schemas.supervisor import SupervisorRunRequest, SupervisorRunResponse
+from app.schemas.supervisor import SupervisorRunListResponse, SupervisorRunRequest, SupervisorRunResponse
 from app.services.supervisor_service import supervisor_service, supervisor_to_dict
 
 
@@ -58,6 +59,14 @@ async def abort_supervisor(run_id: str) -> SupervisorRunResponse:
 @router.get("/supervisor/run/{run_id}", response_model=SupervisorRunResponse)
 async def get_supervisor_run(run_id: str) -> SupervisorRunResponse:
     log_event(logger, logging.INFO, "supervisor.get.start", {"run_id": run_id})
-    run = supervisor_service.get_run(run_id)
+    run = await supervisor_service.get_run(run_id)
     log_event(logger, logging.INFO, "supervisor.get.done", {"run_id": run_id, "status": run.status})
     return SupervisorRunResponse(run=supervisor_to_dict(run))
+
+
+@router.get("/supervisor/runs", response_model=SupervisorRunListResponse)
+async def list_supervisor_runs(conversation_id: str = Query(alias="conversationId")) -> SupervisorRunListResponse:
+    log_event(logger, logging.INFO, "supervisor.list.start", {"conversation_id": conversation_id})
+    runs = await supervisor_service.list_runs(conversation_id)
+    log_event(logger, logging.INFO, "supervisor.list.done", {"conversation_id": conversation_id, "count": len(runs)})
+    return SupervisorRunListResponse(runs=[supervisor_to_dict(item) for item in runs])

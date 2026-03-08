@@ -167,6 +167,12 @@ export class MockChatApi implements IChatApi {
     return { ...row, tasks: [...row.tasks] };
   }
 
+  async listSupervisors(conversationId: string): Promise<SupervisorRun[]> {
+    return [...this.supervisorRuns.values()]
+      .filter((item) => item.conversationId === conversationId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
   private pushMessage(conversationId: string, message: Message) {
     if (!this.messagesByConversation[conversationId]) {
       this.messagesByConversation[conversationId] = [];

@@ -314,6 +314,10 @@ def test_supervisor_run_and_get(monkeypatch):
     assert get_response.status_code == 200
     assert get_response.json()["run"]["id"] == run["id"]
 
+    list_response = client.get(f"/api/supervisor/runs?conversationId={conversation_id}")
+    assert list_response.status_code == 200
+    assert len(list_response.json()["runs"]) >= 1
+
 
 def test_supervisor_run_validation_error():
     create = client.post("/api/conversations")

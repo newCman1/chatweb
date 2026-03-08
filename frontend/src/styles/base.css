@@ -58,7 +58,7 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto auto auto 1fr auto;
   min-width: 0;
   overflow: hidden;
 }

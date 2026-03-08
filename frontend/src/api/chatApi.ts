@@ -37,4 +37,5 @@ export interface IChatApi {
   startSupervisor(input: SupervisorRunInput): Promise<SupervisorRun>;
   getSupervisor(runId: string): Promise<SupervisorRun>;
   abortSupervisor(runId: string): Promise<SupervisorRun>;
+  listSupervisors(conversationId: string): Promise<SupervisorRun[]>;
 }

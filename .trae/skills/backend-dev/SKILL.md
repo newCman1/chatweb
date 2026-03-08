@@ -68,6 +68,10 @@ Use this skill whenever the task modifies backend code.
 - Keep no-auth behavior by default.
 - Add route-level error handling for invalid payloads.
 - Keep backend code isolated from frontend framework specifics.
+- Keep SQLite persistence enabled for:
+  - conversations/messages
+  - supervisor runs/tasks
+  - DB path from `CHATWEB_DB_PATH` (default `backend/data/chatweb.sqlite3`)
 - Keep backend logger redaction active for sensitive fields.
 - Keep backend smoke tests passing (`pytest tests -q`).
 - Backend startup should load `backend/logging.xml` when present for log level/format.
@@ -81,6 +85,7 @@ Use this skill whenever the task modifies backend code.
     - `POST /api/supervisor/run/start` (async start)
     - `POST /api/supervisor/run/{run_id}/abort` (interrupt)
     - `GET /api/supervisor/run/{run_id}` (poll)
+    - `GET /api/supervisor/runs?conversationId=...` (conversation history list)
   - primary AI is responsible for plan/review/summary
   - worker AI is responsible for task execution
   - both must consume shared conversation history context

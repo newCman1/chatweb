@@ -5,6 +5,7 @@ import ChatHeader from "@/components/ChatHeader.vue";
 import MessageList from "@/components/MessageList.vue";
 import ChatInput from "@/components/ChatInput.vue";
 import SupervisorPanel from "@/components/SupervisorPanel.vue";
+import SupervisorBoard from "@/components/SupervisorBoard.vue";
 import { useConversationStore } from "@/stores/conversation";
 import { useChatStore } from "@/stores/chat";
 import type { UploadAttachment } from "@/types/chat";
@@ -14,6 +15,11 @@ const chatStore = useChatStore();
 
 const title = computed(() => conversationStore.currentConversation?.title ?? "New Chat");
 const messages = computed(() => conversationStore.currentMessages);
+const recentRuns = computed(() => {
+  const currentId = conversationStore.currentConversationId;
+  if (!currentId) return [];
+  return chatStore.supervisorRunsByConversation[currentId] ?? [];
+});
 
 async function onCreateConversation() {
   await conversationStore.createConversation();
@@ -21,6 +27,7 @@ async function onCreateConversation() {
 
 function onSelectConversation(conversationId: string) {
   void conversationStore.selectConversation(conversationId);
+  void chatStore.loadSupervisorRuns(conversationId);
 }
 
 async function onSend(payload: { content: string; attachments: UploadAttachment[] }) {
@@ -56,6 +63,9 @@ onMounted(async () => {
   if (!conversationStore.currentConversationId) {
     await conversationStore.createConversation();
   }
+  if (conversationStore.currentConversationId) {
+    await chatStore.loadSupervisorRuns(conversationStore.currentConversationId);
+  }
 });
 </script>
 
@@ -75,6 +85,11 @@ onMounted(async () => {
         :status="chatStore.supervisorStatus"
         @start="onStartSupervisor"
         @abort="chatStore.abortSupervisor"
+      />
+      <SupervisorBoard
+        :current-run="chatStore.supervisorCurrentRun"
+        :status="chatStore.supervisorStatus"
+        :recent-runs="recentRuns"
       />
       <MessageList
         :messages="messages"

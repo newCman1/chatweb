@@ -26,7 +26,7 @@ Backend layers:
 - `backend/app/services`: business and stream orchestration
 - `backend/app/models`: internal records
 - `backend/app/schemas`: request/response schemas
-- `backend/app/db`: persistence placeholder
+- `backend/app/db`: SQLite persistence layer
 - `backend/app/core`: config and shared infra
 
 ## Frontend Run
@@ -144,6 +144,7 @@ Request payload can include:
 - `POST /api/supervisor/run/start`
 - `POST /api/supervisor/run/{run_id}/abort`
 - `GET /api/supervisor/run/{run_id}`
+- `GET /api/supervisor/runs?conversationId=...`
 
 Error response contract (non-stream endpoints):
 
@@ -257,5 +258,6 @@ GitHub Actions workflow: `.github/workflows/ci.yml`
 - Frontend `SseChatApi` supports `json` and `binary` modes
 - Frontend loads server history via `listMessages` on init/select
 - Frontend API includes timeout + retry strategy
-- Backend FastAPI layered skeleton is implemented
+- Backend FastAPI + SQLite persistence is implemented (conversation/message/supervisor run/task)
 - CI + log redaction baseline is implemented
+- Supervisor board is available in desktop chat view with current run + recent run history

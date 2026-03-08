@@ -1,7 +1,6 @@
 import asyncio
 import json
 import logging
-from collections import defaultdict
 from dataclasses import dataclass
 from typing import AsyncGenerator, Optional
 from uuid import uuid4
@@ -11,6 +10,7 @@ import httpx
 from app.core.config import settings
 from app.core.errors import AppError
 from app.core.logging import log_event
+from app.db.session import db
 from app.models.chat import ConversationRecord, MessageRecord, utc_now_iso
 from app.services.ai_client import AIRequestOptions, ai_client
 from app.services.web_search import search_web_context
@@ -32,57 +32,115 @@ def build_thinking_summary(user_text: str) -> str:
     )
 
 
+def _conversation_from_row(row) -> ConversationRecord:
+    return ConversationRecord(
+        id=row["id"],
+        title=row["title"],
+        created_at=row["created_at"],
+        updated_at=row["updated_at"],
+    )
+
+
+def _message_from_row(row) -> MessageRecord:
+    return MessageRecord(
+        id=row["id"],
+        conversation_id=row["conversation_id"],
+        role=row["role"],
+        content=row["content"],
+        thinking=row["thinking"] or "",
+        status=row["status"],
+        created_at=row["created_at"],
+    )
+
+
 class ChatService:
     def __init__(self) -> None:
-        self._conversations: dict[str, ConversationRecord] = {}
-        self._messages: dict[str, list[MessageRecord]] = defaultdict(list)
         self._active_abort_flags: dict[str, asyncio.Event] = {}
-        self._lock = asyncio.Lock()
         self._logger = logging.getLogger("chatweb.backend.services.chat")
 
     async def list_conversations(self) -> list[ConversationRecord]:
         log_event(self._logger, logging.INFO, "service.list_conversations.start")
-        async with self._lock:
-            values = list(self._conversations.values())
-        ordered = sorted(values, key=lambda x: x.updated_at, reverse=True)
-        log_event(self._logger, logging.INFO, "service.list_conversations.done", {"count": len(ordered)})
-        return ordered
+        rows = await db.fetchall(
+            """
+            SELECT id, title, created_at, updated_at
+            FROM conversations
+            ORDER BY updated_at DESC;
+            """
+        )
+        values = [_conversation_from_row(row) for row in rows]
+        log_event(self._logger, logging.INFO, "service.list_conversations.done", {"count": len(values)})
+        return values
 
     async def create_conversation(self) -> ConversationRecord:
         conversation_id = str(uuid4())
         now = utc_now_iso()
-        item = ConversationRecord(
+        await db.execute(
+            """
+            INSERT INTO conversations (id, title, created_at, updated_at)
+            VALUES (?, ?, ?, ?);
+            """,
+            (conversation_id, "New Chat", now, now),
+        )
+        log_event(self._logger, logging.INFO, "conversation.created", {"conversation_id": conversation_id})
+        return ConversationRecord(
             id=conversation_id,
             title="New Chat",
             created_at=now,
             updated_at=now,
         )
-        async with self._lock:
-            self._conversations[conversation_id] = item
-        log_event(self._logger, logging.INFO, "conversation.created", {"conversation_id": conversation_id})
-        return item
 
     async def list_messages(self, conversation_id: str) -> list[MessageRecord]:
         log_event(self._logger, logging.INFO, "service.list_messages.start", {"conversation_id": conversation_id})
-        async with self._lock:
-            if conversation_id not in self._conversations:
-                raise AppError(
-                    "CONVERSATION_NOT_FOUND",
-                    f"Conversation not found: {conversation_id}",
-                    status_code=404,
-                    context={"conversation_id": conversation_id},
-                )
-            rows = list(self._messages.get(conversation_id, []))
+        if not await self._conversation_exists(conversation_id):
+            raise AppError(
+                "CONVERSATION_NOT_FOUND",
+                f"Conversation not found: {conversation_id}",
+                status_code=404,
+                context={"conversation_id": conversation_id},
+            )
+        rows = await db.fetchall(
+            """
+            SELECT id, conversation_id, role, content, thinking, status, created_at
+            FROM messages
+            WHERE conversation_id = ?
+            ORDER BY created_at ASC, id ASC;
+            """,
+            (conversation_id,),
+        )
+        values = [_message_from_row(row) for row in rows]
         log_event(
             self._logger,
             logging.INFO,
             "service.list_messages.done",
-            {"conversation_id": conversation_id, "count": len(rows)},
+            {"conversation_id": conversation_id, "count": len(values)},
         )
-        return rows
+        return values
 
     async def append_user_message(self, conversation_id: str, content: str) -> MessageRecord:
         now = utc_now_iso()
+        conversation = await self._get_conversation(conversation_id)
+        if not conversation:
+            await db.execute(
+                """
+                INSERT INTO conversations (id, title, created_at, updated_at)
+                VALUES (?, ?, ?, ?);
+                """,
+                (conversation_id, "New Chat", now, now),
+            )
+            title = content.strip()[:24] or "New Chat"
+            await db.execute(
+                "UPDATE conversations SET title = ?, updated_at = ? WHERE id = ?;",
+                (title, now, conversation_id),
+            )
+        else:
+            title = conversation.title
+            if title == "New Chat":
+                title = content.strip()[:24] or "New Chat"
+            await db.execute(
+                "UPDATE conversations SET title = ?, updated_at = ? WHERE id = ?;",
+                (title, now, conversation_id),
+            )
+
         msg = MessageRecord(
             id=str(uuid4()),
             conversation_id=conversation_id,
@@ -91,19 +149,13 @@ class ChatService:
             status="done",
             created_at=now,
         )
-        async with self._lock:
-            if conversation_id not in self._conversations:
-                self._conversations[conversation_id] = ConversationRecord(
-                    id=conversation_id,
-                    title="New Chat",
-                    created_at=now,
-                    updated_at=now,
-                )
-            conv = self._conversations[conversation_id]
-            if conv.title == "New Chat":
-                conv.title = content.strip()[:24] or "New Chat"
-            conv.updated_at = now
-            self._messages[conversation_id].append(msg)
+        await db.execute(
+            """
+            INSERT INTO messages (id, conversation_id, role, content, thinking, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?);
+            """,
+            (msg.id, conversation_id, msg.role, msg.content, msg.thinking, msg.status, msg.created_at),
+        )
         log_event(
             self._logger,
             logging.INFO,
@@ -122,8 +174,14 @@ class ChatService:
             status="streaming",
             created_at=utc_now_iso(),
         )
-        async with self._lock:
-            self._messages[conversation_id].append(msg)
+        await db.execute(
+            """
+            INSERT INTO messages (id, conversation_id, role, content, thinking, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?);
+            """,
+            (msg.id, conversation_id, msg.role, msg.content, msg.thinking, msg.status, msg.created_at),
+        )
+        await self._touch_conversation(conversation_id)
         log_event(
             self._logger,
             logging.INFO,
@@ -133,7 +191,7 @@ class ChatService:
         return msg
 
     async def abort(self, conversation_id: str) -> None:
-        if conversation_id not in self._conversations:
+        if not await self._conversation_exists(conversation_id):
             raise AppError(
                 "CONVERSATION_NOT_FOUND",
                 f"Conversation not found: {conversation_id}",
@@ -360,8 +418,7 @@ class ChatService:
         enable_web_search: bool,
         attachments: tuple["RuntimeAttachment", ...] = (),
     ) -> list[dict[str, str]]:
-        async with self._lock:
-            history = list(self._messages.get(conversation_id, []))
+        history = await self.list_messages(conversation_id)
         provider_messages: list[dict[str, str]] = [
             {"role": "system", "content": "You are a concise and practical assistant."}
         ]
@@ -420,43 +477,61 @@ class ChatService:
         return context
 
     async def _append_assistant_text(self, conversation_id: str, message_id: str, delta: str) -> None:
-        async with self._lock:
-            messages = self._messages.get(conversation_id, [])
-            target = next((msg for msg in messages if msg.id == message_id), None)
-            if target:
-                target.content += delta
-                target.status = "streaming"
-                self._conversations[conversation_id].updated_at = utc_now_iso()
+        await db.execute(
+            """
+            UPDATE messages
+            SET content = content || ?, status = 'streaming'
+            WHERE id = ? AND conversation_id = ?;
+            """,
+            (delta, message_id, conversation_id),
+        )
+        await self._touch_conversation(conversation_id)
 
     async def _append_assistant_thinking(self, conversation_id: str, message_id: str, delta: str) -> None:
-        async with self._lock:
-            messages = self._messages.get(conversation_id, [])
-            target = next((msg for msg in messages if msg.id == message_id), None)
-            if target:
-                target.thinking += delta
-                target.status = "streaming"
-                self._conversations[conversation_id].updated_at = utc_now_iso()
+        await db.execute(
+            """
+            UPDATE messages
+            SET thinking = thinking || ?, status = 'streaming'
+            WHERE id = ? AND conversation_id = ?;
+            """,
+            (delta, message_id, conversation_id),
+        )
+        await self._touch_conversation(conversation_id)
 
     async def _mark_done(self, conversation_id: str, message_id: str) -> None:
-        async with self._lock:
-            for msg in self._messages.get(conversation_id, []):
-                if msg.id == message_id:
-                    msg.status = "done"
-                    break
+        await db.execute(
+            "UPDATE messages SET status = 'done' WHERE id = ? AND conversation_id = ?;",
+            (message_id, conversation_id),
+        )
+        await self._touch_conversation(conversation_id)
 
     async def _mark_stopped(self, conversation_id: str, message_id: str) -> None:
-        async with self._lock:
-            for msg in self._messages.get(conversation_id, []):
-                if msg.id == message_id:
-                    msg.status = "stopped"
-                    break
+        await db.execute(
+            "UPDATE messages SET status = 'stopped' WHERE id = ? AND conversation_id = ?;",
+            (message_id, conversation_id),
+        )
+        await self._touch_conversation(conversation_id)
 
     async def _mark_error(self, conversation_id: str, message_id: str) -> None:
-        async with self._lock:
-            for msg in self._messages.get(conversation_id, []):
-                if msg.id == message_id:
-                    msg.status = "error"
-                    break
+        await db.execute(
+            "UPDATE messages SET status = 'error' WHERE id = ? AND conversation_id = ?;",
+            (message_id, conversation_id),
+        )
+        await self._touch_conversation(conversation_id)
+
+    async def _touch_conversation(self, conversation_id: str) -> None:
+        await db.execute("UPDATE conversations SET updated_at = ? WHERE id = ?;", (utc_now_iso(), conversation_id))
+
+    async def _conversation_exists(self, conversation_id: str) -> bool:
+        row = await db.fetchone("SELECT id FROM conversations WHERE id = ?;", (conversation_id,))
+        return row is not None
+
+    async def _get_conversation(self, conversation_id: str) -> Optional[ConversationRecord]:
+        row = await db.fetchone(
+            "SELECT id, title, created_at, updated_at FROM conversations WHERE id = ?;",
+            (conversation_id,),
+        )
+        return _conversation_from_row(row) if row else None
 
 
 chat_service = ChatService()

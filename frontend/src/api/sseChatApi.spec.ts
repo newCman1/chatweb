@@ -270,4 +270,20 @@ describe("SseChatApi", () => {
     expect((fetchMock.mock.calls[1][0] as string).endsWith("/supervisor/run/r1")).toBe(true);
     expect((fetchMock.mock.calls[2][0] as string).endsWith("/supervisor/run/r1/abort")).toBe(true);
   });
+
+  it("calls supervisor list endpoint", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ runs: [] })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const api = new SseChatApi({
+      baseUrl: "http://127.0.0.1:8000/api",
+      streamFormat: "json"
+    });
+    const runs = await api.listSupervisors("c1");
+    expect(runs).toHaveLength(0);
+    expect((fetchMock.mock.calls[0][0] as string).includes("/supervisor/runs?conversationId=c1")).toBe(true);
+  });
 });

@@ -22,7 +22,7 @@
   - `backend/app/services`: business and stream orchestration
   - `backend/app/models`: internal records
   - `backend/app/schemas`: DTO/request/response schema
-  - `backend/app/db`: persistence abstraction placeholder
+  - `backend/app/db`: SQLite persistence and DB session layer
   - `backend/app/core`: config/shared infrastructure
 
 ## 3. Frontend Milestones
@@ -168,6 +168,8 @@ Acceptance:
 14. Done: Add supervisor execution API (primary AI plans/reviews, worker AI executes) with shared conversation context.
 15. Done: Add supervisor async start + abort controls (`/start`, `/abort`) with run status lifecycle.
 16. Done: Add desktop supervisor panel and poll loop, showing worker/primary outputs inside message timeline.
+17. Done: Add SQLite durable persistence for conversations/messages/supervisor runs/tasks (survives restart).
+18. Done: Add supervisor run history endpoint (`GET /api/supervisor/runs`) and desktop board (`SupervisorBoard`) with current run + recent runs.
 
 ## 9. Change History
 Use Git history for all detailed corrections and timeline:
@@ -203,12 +205,13 @@ git log --oneline --decorate --graph
 - Desktop chat UI (conversation list, stream reply, stop, thinking display/toggle).
 - Frontend adapter split (`mock` / `sse`) with timeout/retry and history loading.
 - Backend chat API + SSE/binary stream + structured error code contract.
+- Backend SQLite persistence for conversations/messages/supervisor run/task records.
 - Optional real provider integration (OpenAI-compatible, DeepSeek defaults).
 - Text attachment context injection pipeline.
 - Configurable web search provider (`duckduckgo` / `searxng` / `serpapi` / `tavily`).
 - Supervisor API Stage 2 (`/api/supervisor/run`, `/api/supervisor/run/start`, `/api/supervisor/run/{run_id}/abort`, `/api/supervisor/run/{run_id}`).
+- Supervisor run history API (`/api/supervisor/runs`) and desktop board (current run + recent history).
 - Desktop supervisor UI panel (objective/plan/tasks/retries controls + stop) and worker/primary message projection in chat list.
 
 ### Not Completed Yet
-- Durable persistence (current in-memory records, no DB persistence).
 - Mobile-first adaptation and auth/login systems are intentionally out of current scope for now.

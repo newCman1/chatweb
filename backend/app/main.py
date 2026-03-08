@@ -10,6 +10,7 @@ from app.api.router import api_router
 from app.core.config import settings
 from app.core.errors import AppError, error_response
 from app.core.logging import get_logger, log_event, setup_logging
+from app.db.session import db
 
 
 setup_logging(settings.log_level)
@@ -143,6 +144,12 @@ async def unexpected_exception_handler(request: Request, exc: Exception):
 
 
 app.include_router(api_router, prefix="/api")
+
+
+@app.on_event("startup")
+async def startup_event() -> None:
+    await db.init()
+    log_event(logger, logging.INFO, "startup.db.ready", {"db_path": settings.db_path})
 
 
 @app.get("/health")

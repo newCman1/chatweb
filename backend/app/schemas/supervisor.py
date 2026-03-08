@@ -36,3 +36,7 @@ class SupervisorRunDTO(BaseModel):
 
 class SupervisorRunResponse(BaseModel):
     run: SupervisorRunDTO
+
+
+class SupervisorRunListResponse(BaseModel):
+    runs: list[SupervisorRunDTO]

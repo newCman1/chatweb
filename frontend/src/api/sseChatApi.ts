@@ -93,6 +93,14 @@ export class SseChatApi implements IChatApi {
     return data.run;
   }
 
+  async listSupervisors(conversationId: string): Promise<SupervisorRun[]> {
+    const response = await this.requestWithRetry(
+      `${this.baseUrl}/supervisor/runs?conversationId=${encodeURIComponent(conversationId)}`
+    );
+    const data = (await response.json()) as { runs: SupervisorRun[] };
+    return data.runs ?? [];
+  }
+
   async *streamReply(input: StreamReplyInput): AsyncGenerator<StreamChunk> {
     const userMessage = [...input.messages].reverse().find((m) => m.role === "user");
     const content = userMessage?.content?.trim() ?? "";

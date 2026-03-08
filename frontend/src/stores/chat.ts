@@ -21,6 +21,8 @@ interface ChatState {
   supervisorStatus: SupervisorRunStatus | null;
   supervisorActiveConversationId: string | null;
   supervisorSeenEventKeys: Record<string, boolean>;
+  supervisorCurrentRun: SupervisorRun | null;
+  supervisorRunsByConversation: Record<string, SupervisorRun[]>;
 }
 
 const uid = () => crypto.randomUUID();
@@ -75,7 +77,9 @@ export const useChatStore = defineStore("chat", {
     supervisorRunId: null,
     supervisorStatus: null,
     supervisorActiveConversationId: null,
-    supervisorSeenEventKeys: {}
+    supervisorSeenEventKeys: {},
+    supervisorCurrentRun: null,
+    supervisorRunsByConversation: {}
   }),
   actions: {
     async send(payload: { content: string; attachments?: UploadAttachment[] }) {
@@ -235,6 +239,8 @@ export const useChatStore = defineStore("chat", {
         this.supervisorRunId = run.id;
         this.supervisorStatus = run.status;
         this.supervisorActiveConversationId = conversationId;
+        this.supervisorCurrentRun = run;
+        this.upsertSupervisorRun(conversationId, run);
         this.ingestSupervisorRun(run, conversationId);
         if (run.status === "running") {
           void this.pollSupervisor(run.id, conversationId);
@@ -253,6 +259,8 @@ export const useChatStore = defineStore("chat", {
       try {
         const run = await chatApi.abortSupervisor(runId);
         const conversationId = this.supervisorActiveConversationId ?? run.conversationId;
+        this.supervisorCurrentRun = run;
+        this.upsertSupervisorRun(conversationId, run);
         this.ingestSupervisorRun(run, conversationId);
         this.supervisorStatus = run.status;
         if (run.status !== "running") {
@@ -304,6 +312,8 @@ export const useChatStore = defineStore("chat", {
         });
         try {
           const run = await chatApi.getSupervisor(runId);
+          this.supervisorCurrentRun = run;
+          this.upsertSupervisorRun(conversationId, run);
           this.ingestSupervisorRun(run, conversationId);
           this.supervisorStatus = run.status;
           if (run.status !== "running") {
@@ -320,6 +330,25 @@ export const useChatStore = defineStore("chat", {
           });
           return;
         }
+      }
+    },
+    async loadSupervisorRuns(conversationId: string) {
+      try {
+        const runs = await chatApi.listSupervisors(conversationId);
+        this.supervisorRunsByConversation[conversationId] = runs;
+        const active = runs.find((item) => item.status === "running") ?? runs[0] ?? null;
+        this.supervisorCurrentRun = active;
+        this.supervisorStatus = active?.status ?? null;
+        this.supervisorActiveConversationId = conversationId;
+        this.supervisorRunId = active?.status === "running" ? active.id : null;
+        if (active?.status === "running") {
+          void this.pollSupervisor(active.id, conversationId);
+        }
+      } catch (err) {
+        logger.error("supervisor.list.error", {
+          conversationId,
+          error: err instanceof Error ? err.message : "unknown"
+        });
       }
     },
     ingestSupervisorRun(run: SupervisorRun, conversationId: string) {
@@ -368,6 +397,18 @@ export const useChatStore = defineStore("chat", {
         });
         this.supervisorSeenEventKeys[summaryKey] = true;
       }
+    },
+    upsertSupervisorRun(conversationId: string, run: SupervisorRun) {
+      const list = this.supervisorRunsByConversation[conversationId] ?? [];
+      const index = list.findIndex((item) => item.id === run.id);
+      if (index >= 0) {
+        list[index] = run;
+      } else {
+        list.unshift(run);
+      }
+      this.supervisorRunsByConversation[conversationId] = [...list].sort((a, b) =>
+        b.createdAt.localeCompare(a.createdAt)
+      );
     }
   }
 });

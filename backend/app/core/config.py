@@ -34,6 +34,7 @@ def _bool(name: str, default: bool) -> bool:
 class Settings:
     app_name: str
     app_env: str
+    db_path: str
     log_level: str
     default_stream_format: str
     token_delay_seconds: float
@@ -69,6 +70,7 @@ def load_settings() -> Settings:
     return Settings(
         app_name=os.getenv("CHATWEB_APP_NAME", "ChatWeb Backend"),
         app_env=os.getenv("CHATWEB_ENV", "development"),
+        db_path=os.getenv("CHATWEB_DB_PATH", str((_backend_root / "data" / "chatweb.sqlite3"))),
         log_level=os.getenv("CHATWEB_LOG_LEVEL", "INFO"),
         default_stream_format=os.getenv("CHATWEB_DEFAULT_STREAM_FORMAT", "json"),
         token_delay_seconds=_float("CHATWEB_TOKEN_DELAY_SECONDS", 0.05),
