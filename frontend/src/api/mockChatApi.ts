@@ -1,5 +1,6 @@
 import type { Conversation, Message, StreamChunk } from "@/types/chat";
-import type { IChatApi, StreamReplyInput } from "./chatApi";
+import type { SupervisorRun, SupervisorTask } from "@/types/chat";
+import type { IChatApi, StreamReplyInput, SupervisorRunInput } from "./chatApi";
 import { logger } from "@/utils/logger";
 
 const wait = (ms: number) =>
@@ -29,6 +30,7 @@ export class MockChatApi implements IChatApi {
   private messagesByConversation: Record<string, Message[]> = {};
   private activeAbortMap = new Map<string, AbortController>();
   private tokenDelayMs: number;
+  private supervisorRuns = new Map<string, SupervisorRun>();
 
   constructor(options?: { tokenDelayMs?: number }) {
     this.tokenDelayMs = options?.tokenDelayMs ?? 45;
@@ -112,6 +114,59 @@ export class MockChatApi implements IChatApi {
     }
   }
 
+  async runSupervisor(input: SupervisorRunInput): Promise<SupervisorRun> {
+    const tasks = this.buildMockSupervisorTasks(input.objective, input.maxTasks ?? 2);
+    const run: SupervisorRun = {
+      id: uid(),
+      conversationId: input.conversationId,
+      objective: input.objective,
+      planText: input.plan ?? "",
+      primaryName: "Primary AI",
+      workerName: "Worker AI",
+      status: tasks.every((task) => task.status === "completed") ? "completed" : "failed",
+      summary: "Mock supervisor run completed.",
+      createdAt: new Date().toISOString(),
+      tasks
+    };
+    this.supervisorRuns.set(run.id, run);
+    return run;
+  }
+
+  async startSupervisor(input: SupervisorRunInput): Promise<SupervisorRun> {
+    const run: SupervisorRun = {
+      id: uid(),
+      conversationId: input.conversationId,
+      objective: input.objective,
+      planText: input.plan ?? "",
+      primaryName: "Primary AI",
+      workerName: "Worker AI",
+      status: "running",
+      summary: "",
+      createdAt: new Date().toISOString(),
+      tasks: []
+    };
+    this.supervisorRuns.set(run.id, run);
+    void this.completeMockSupervisorRun(run.id, input);
+    return run;
+  }
+
+  async getSupervisor(runId: string): Promise<SupervisorRun> {
+    const row = this.supervisorRuns.get(runId);
+    if (!row) throw new Error("SUPERVISOR_RUN_NOT_FOUND");
+    return { ...row, tasks: [...row.tasks] };
+  }
+
+  async abortSupervisor(runId: string): Promise<SupervisorRun> {
+    const row = this.supervisorRuns.get(runId);
+    if (!row) throw new Error("SUPERVISOR_RUN_NOT_FOUND");
+    row.status = "aborted";
+    row.summary = row.summary || "Run aborted.";
+    row.tasks = row.tasks.map((item) =>
+      item.status === "running" ? { ...item, status: "aborted", reviewFeedback: "Aborted by user." } : item
+    );
+    return { ...row, tasks: [...row.tasks] };
+  }
+
   private pushMessage(conversationId: string, message: Message) {
     if (!this.messagesByConversation[conversationId]) {
       this.messagesByConversation[conversationId] = [];
@@ -120,5 +175,31 @@ export class MockChatApi implements IChatApi {
     if (!exists) {
       this.messagesByConversation[conversationId].push(message);
     }
+  }
+
+  private buildMockSupervisorTasks(objective: string, maxTasks: number): SupervisorTask[] {
+    const count = Math.max(1, Math.min(3, maxTasks));
+    const tasks: SupervisorTask[] = [];
+    for (let index = 1; index <= count; index++) {
+      tasks.push({
+        index,
+        title: `Task ${index} for ${objective.slice(0, 24)}`,
+        workerOutput: `Mock worker output for task ${index}.`,
+        reviewVerdict: "PASS",
+        reviewFeedback: "Looks good.",
+        status: "completed",
+        retries: 0
+      });
+    }
+    return tasks;
+  }
+
+  private async completeMockSupervisorRun(runId: string, input: SupervisorRunInput): Promise<void> {
+    await wait(120);
+    const row = this.supervisorRuns.get(runId);
+    if (!row || row.status === "aborted") return;
+    row.tasks = this.buildMockSupervisorTasks(input.objective, input.maxTasks ?? 2);
+    row.status = row.tasks.every((task) => task.status === "completed") ? "completed" : "failed";
+    row.summary = "Mock async supervisor run finished.";
   }
 }

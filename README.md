@@ -202,6 +202,11 @@ Async mode:
 - Poll via `GET /api/supervisor/run/{run_id}`.
 - Stop via `POST /api/supervisor/run/{run_id}/abort`.
 
+Desktop UI behavior:
+- Chat page includes a `Supervisor Mode` panel (objective/plan/max tasks/max retries).
+- Start action triggers async supervisor run and polling.
+- Worker and Primary outputs are projected into the same message timeline, so you can see Worker speaking in the web chat.
+
 Env options (all optional, fallback to `CHATWEB_AI_*` when empty):
 - `CHATWEB_SUPERVISOR_PRIMARY_NAME`
 - `CHATWEB_SUPERVISOR_WORKER_NAME`

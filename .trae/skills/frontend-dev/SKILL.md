@@ -45,6 +45,11 @@ Use this skill whenever the task modifies frontend code.
   - request-level runtime options:
     - `enableWebSearch`
     - `apiKey` / `apiBaseUrl` / `apiModel` / `apiReasoningModel`
+  - supervisor endpoints:
+    - `runSupervisor` (sync)
+    - `startSupervisor` (async)
+    - `getSupervisor` (poll)
+    - `abortSupervisor` (interrupt)
 
 ## Delivery Rules
 
@@ -63,6 +68,10 @@ Use this skill whenever the task modifies frontend code.
   - support text attachments only (`txt/md/json/csv/log/xml/yaml`)
   - send attachments via API payload `attachments[]`
   - keep unsupported file feedback clear in UI
+- Supervisor desktop flow:
+  - expose supervisor panel controls (objective/plan/max tasks/max retries)
+  - show running/completed/failed/aborted status
+  - project worker and primary review outputs into chat message timeline
 - Preserve `IChatApi` boundary and adapter injection pattern.
 - Add or update tests when behavior changes.
 - Keep frontend logger redaction enabled for sensitive fields.

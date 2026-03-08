@@ -3,8 +3,8 @@ import { createPinia, setActivePinia } from "pinia";
 import { useConversationStore } from "./conversation";
 import { useChatStore } from "./chat";
 import { setChatApi } from "@/api/client";
-import type { IChatApi, StreamReplyInput } from "@/api/chatApi";
-import type { Conversation, StreamChunk } from "@/types/chat";
+import type { IChatApi, StreamReplyInput, SupervisorRunInput } from "@/api/chatApi";
+import type { Conversation, StreamChunk, SupervisorRun } from "@/types/chat";
 
 const delay = (ms: number) =>
   new Promise<void>((resolve) => {
@@ -48,6 +48,80 @@ class StreamingApiStub implements IChatApi {
   }
 
   abortStream(_conversationId: string): void {}
+
+  async runSupervisor(input: SupervisorRunInput): Promise<SupervisorRun> {
+    const now = new Date().toISOString();
+    return {
+      id: "run-sync",
+      conversationId: input.conversationId,
+      objective: input.objective,
+      planText: input.plan ?? "",
+      primaryName: "Primary AI",
+      workerName: "Worker AI",
+      status: "completed",
+      summary: "done",
+      createdAt: now,
+      tasks: []
+    };
+  }
+
+  async startSupervisor(input: SupervisorRunInput): Promise<SupervisorRun> {
+    const now = new Date().toISOString();
+    return {
+      id: "run-async",
+      conversationId: input.conversationId,
+      objective: input.objective,
+      planText: input.plan ?? "",
+      primaryName: "Primary AI",
+      workerName: "Worker AI",
+      status: "running",
+      summary: "",
+      createdAt: now,
+      tasks: []
+    };
+  }
+
+  async getSupervisor(_runId: string): Promise<SupervisorRun> {
+    const now = new Date().toISOString();
+    return {
+      id: "run-async",
+      conversationId: "c1",
+      objective: "obj",
+      planText: "",
+      primaryName: "Primary AI",
+      workerName: "Worker AI",
+      status: "completed",
+      summary: "all done",
+      createdAt: now,
+      tasks: [
+        {
+          index: 1,
+          title: "Task 1",
+          workerOutput: "worker output",
+          reviewVerdict: "PASS",
+          reviewFeedback: "ok",
+          status: "completed",
+          retries: 0
+        }
+      ]
+    };
+  }
+
+  async abortSupervisor(_runId: string): Promise<SupervisorRun> {
+    const now = new Date().toISOString();
+    return {
+      id: "run-async",
+      conversationId: "c1",
+      objective: "obj",
+      planText: "",
+      primaryName: "Primary AI",
+      workerName: "Worker AI",
+      status: "aborted",
+      summary: "Run aborted by user.",
+      createdAt: now,
+      tasks: []
+    };
+  }
 }
 
 describe("chat store", () => {
@@ -162,5 +236,21 @@ describe("chat store", () => {
     });
     expect(apiStub.lastInput?.attachments).toHaveLength(1);
     expect(apiStub.lastInput?.attachments?.[0].name).toBe("notes.txt");
+  });
+
+  it("runs supervisor and appends worker/primary messages", async () => {
+    const conversationStore = useConversationStore();
+    await conversationStore.createConversation();
+    const chatStore = useChatStore();
+    await chatStore.startSupervisor({
+      objective: "ship feature",
+      maxTasks: 1,
+      maxRetries: 0
+    });
+    await delay(1100);
+
+    const assistantMessages = conversationStore.currentMessages.filter((item) => item.role === "assistant");
+    expect(assistantMessages.some((item) => item.content.includes("[Worker AI]"))).toBe(true);
+    expect(assistantMessages.some((item) => item.content.includes("[Primary AI]"))).toBe(true);
   });
 });

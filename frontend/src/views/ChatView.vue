@@ -4,6 +4,7 @@ import ChatSidebar from "@/components/ChatSidebar.vue";
 import ChatHeader from "@/components/ChatHeader.vue";
 import MessageList from "@/components/MessageList.vue";
 import ChatInput from "@/components/ChatInput.vue";
+import SupervisorPanel from "@/components/SupervisorPanel.vue";
 import { useConversationStore } from "@/stores/conversation";
 import { useChatStore } from "@/stores/chat";
 import type { UploadAttachment } from "@/types/chat";
@@ -28,6 +29,15 @@ async function onSend(payload: { content: string; attachments: UploadAttachment[
 
 function onToggleThinking(messageId: string) {
   chatStore.toggleThinkingExpanded(messageId);
+}
+
+async function onStartSupervisor(payload: {
+  objective: string;
+  plan?: string;
+  maxTasks: number;
+  maxRetries: number;
+}) {
+  await chatStore.startSupervisor(payload);
 }
 
 watch(
@@ -60,6 +70,12 @@ onMounted(async () => {
 
     <section class="chat-main">
       <ChatHeader :title="title" />
+      <SupervisorPanel
+        :disabled="!conversationStore.currentConversationId"
+        :status="chatStore.supervisorStatus"
+        @start="onStartSupervisor"
+        @abort="chatStore.abortSupervisor"
+      />
       <MessageList
         :messages="messages"
         :thinking-expanded-by-message-id="chatStore.thinkingExpandedByMessageId"

@@ -167,6 +167,7 @@ Acceptance:
 13. Done: Add configurable web-search provider (`duckduckgo` / `searxng` / `serpapi` / `tavily`) in backend config.
 14. Done: Add supervisor execution API (primary AI plans/reviews, worker AI executes) with shared conversation context.
 15. Done: Add supervisor async start + abort controls (`/start`, `/abort`) with run status lifecycle.
+16. Done: Add desktop supervisor panel and poll loop, showing worker/primary outputs inside message timeline.
 
 ## 9. Change History
 Use Git history for all detailed corrections and timeline:
@@ -206,8 +207,8 @@ git log --oneline --decorate --graph
 - Text attachment context injection pipeline.
 - Configurable web search provider (`duckduckgo` / `searxng` / `serpapi` / `tavily`).
 - Supervisor API Stage 2 (`/api/supervisor/run`, `/api/supervisor/run/start`, `/api/supervisor/run/{run_id}/abort`, `/api/supervisor/run/{run_id}`).
+- Desktop supervisor UI panel (objective/plan/tasks/retries controls + stop) and worker/primary message projection in chat list.
 
 ### Not Completed Yet
-- Frontend supervisor dashboard/UI (currently backend API first).
 - Durable persistence (current in-memory records, no DB persistence).
 - Mobile-first adaptation and auth/login systems are intentionally out of current scope for now.

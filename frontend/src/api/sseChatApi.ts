@@ -1,5 +1,5 @@
-import type { Conversation, Message, StreamChunk } from "@/types/chat";
-import type { IChatApi, StreamReplyInput } from "./chatApi";
+import type { Conversation, Message, StreamChunk, SupervisorRun } from "@/types/chat";
+import type { IChatApi, StreamReplyInput, SupervisorRunInput } from "./chatApi";
 
 interface SseChatApiOptions {
   baseUrl: string;
@@ -44,6 +44,53 @@ export class SseChatApi implements IChatApi {
     const response = await this.requestWithRetry(`${this.baseUrl}/conversations/${conversationId}/messages`);
     const data = (await response.json()) as { messages: Message[] };
     return data.messages ?? [];
+  }
+
+  async runSupervisor(input: SupervisorRunInput): Promise<SupervisorRun> {
+    const response = await this.requestWithRetry(`${this.baseUrl}/supervisor/run`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        conversationId: input.conversationId,
+        objective: input.objective,
+        plan: input.plan,
+        maxTasks: input.maxTasks ?? 4,
+        maxRetries: input.maxRetries ?? 1
+      })
+    });
+    const data = (await response.json()) as { run: SupervisorRun };
+    return data.run;
+  }
+
+  async startSupervisor(input: SupervisorRunInput): Promise<SupervisorRun> {
+    const response = await this.requestWithRetry(`${this.baseUrl}/supervisor/run/start`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        conversationId: input.conversationId,
+        objective: input.objective,
+        plan: input.plan,
+        maxTasks: input.maxTasks ?? 4,
+        maxRetries: input.maxRetries ?? 1
+      })
+    });
+    const data = (await response.json()) as { run: SupervisorRun };
+    return data.run;
+  }
+
+  async getSupervisor(runId: string): Promise<SupervisorRun> {
+    const response = await this.requestWithRetry(`${this.baseUrl}/supervisor/run/${runId}`);
+    const data = (await response.json()) as { run: SupervisorRun };
+    return data.run;
+  }
+
+  async abortSupervisor(runId: string): Promise<SupervisorRun> {
+    const response = await this.requestWithRetry(`${this.baseUrl}/supervisor/run/${runId}/abort`, {
+      method: "POST",
+      headers
+    });
+    const data = (await response.json()) as { run: SupervisorRun };
+    return data.run;
   }
 
   async *streamReply(input: StreamReplyInput): AsyncGenerator<StreamChunk> {

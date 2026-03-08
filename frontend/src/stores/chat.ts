@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { chatApi } from "@/api/client";
 import { useConversationStore } from "./conversation";
-import type { Message, UploadAttachment } from "@/types/chat";
+import type { Message, SupervisorRun, SupervisorRunStatus, UploadAttachment } from "@/types/chat";
 import { logger } from "@/utils/logger";
 
 interface ChatState {
@@ -17,6 +17,10 @@ interface ChatState {
   userApiModel: string;
   userApiReasoningModel: string;
   thinkingExpandedByMessageId: Record<string, boolean>;
+  supervisorRunId: string | null;
+  supervisorStatus: SupervisorRunStatus | null;
+  supervisorActiveConversationId: string | null;
+  supervisorSeenEventKeys: Record<string, boolean>;
 }
 
 const uid = () => crypto.randomUUID();
@@ -27,6 +31,7 @@ const USER_API_KEY = "chatweb.userApiKey";
 const USER_API_BASE_URL = "chatweb.userApiBaseUrl";
 const USER_API_MODEL = "chatweb.userApiModel";
 const USER_API_REASONING_MODEL = "chatweb.userApiReasoningModel";
+const SUPERVISOR_POLL_MS = 1000;
 
 function loadDeepThinkingPreference(): boolean {
   if (typeof window === "undefined") return false;
@@ -66,7 +71,11 @@ export const useChatStore = defineStore("chat", {
     userApiBaseUrl: loadTextPreference(USER_API_BASE_URL),
     userApiModel: loadTextPreference(USER_API_MODEL),
     userApiReasoningModel: loadTextPreference(USER_API_REASONING_MODEL),
-    thinkingExpandedByMessageId: {}
+    thinkingExpandedByMessageId: {},
+    supervisorRunId: null,
+    supervisorStatus: null,
+    supervisorActiveConversationId: null,
+    supervisorSeenEventKeys: {}
   }),
   actions: {
     async send(payload: { content: string; attachments?: UploadAttachment[] }) {
@@ -191,6 +200,69 @@ export const useChatStore = defineStore("chat", {
       this.activeAbortController?.abort();
       chatApi.abortStream(this.activeConversationId);
     },
+    async startSupervisor(payload: {
+      objective: string;
+      plan?: string;
+      maxTasks?: number;
+      maxRetries?: number;
+    }) {
+      const objective = payload.objective.trim();
+      if (!objective) {
+        this.errorText = "Supervisor objective is required.";
+        return;
+      }
+      const conversationStore = useConversationStore();
+      if (!conversationStore.currentConversationId) {
+        await conversationStore.createConversation();
+      }
+      const conversationId = conversationStore.currentConversationId;
+      if (!conversationId) return;
+
+      this.errorText = null;
+      logger.info("supervisor.start.request", {
+        conversationId,
+        objectiveLength: objective.length
+      });
+
+      try {
+        const run = await chatApi.startSupervisor({
+          conversationId,
+          objective,
+          plan: payload.plan?.trim() || undefined,
+          maxTasks: payload.maxTasks ?? 4,
+          maxRetries: payload.maxRetries ?? 1
+        });
+        this.supervisorRunId = run.id;
+        this.supervisorStatus = run.status;
+        this.supervisorActiveConversationId = conversationId;
+        this.ingestSupervisorRun(run, conversationId);
+        if (run.status === "running") {
+          void this.pollSupervisor(run.id, conversationId);
+        }
+      } catch (err) {
+        this.errorText = "Supervisor start failed.";
+        logger.error("supervisor.start.error", {
+          conversationId,
+          error: err instanceof Error ? err.message : "unknown"
+        });
+      }
+    },
+    async abortSupervisor() {
+      const runId = this.supervisorRunId;
+      if (!runId) return;
+      try {
+        const run = await chatApi.abortSupervisor(runId);
+        const conversationId = this.supervisorActiveConversationId ?? run.conversationId;
+        this.ingestSupervisorRun(run, conversationId);
+        this.supervisorStatus = run.status;
+        if (run.status !== "running") {
+          this.supervisorRunId = null;
+        }
+      } catch (err) {
+        this.errorText = "Supervisor abort failed.";
+        logger.error("supervisor.abort.error", { error: err instanceof Error ? err.message : "unknown" });
+      }
+    },
     setEnableDeepThinking(enable: boolean) {
       this.enableDeepThinking = enable;
       if (typeof window !== "undefined") {
@@ -224,6 +296,78 @@ export const useChatStore = defineStore("chat", {
     },
     toggleThinkingExpanded(messageId: string) {
       this.thinkingExpandedByMessageId[messageId] = !this.isThinkingExpanded(messageId);
+    },
+    async pollSupervisor(runId: string, conversationId: string) {
+      while (this.supervisorRunId === runId) {
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, SUPERVISOR_POLL_MS);
+        });
+        try {
+          const run = await chatApi.getSupervisor(runId);
+          this.ingestSupervisorRun(run, conversationId);
+          this.supervisorStatus = run.status;
+          if (run.status !== "running") {
+            this.supervisorRunId = null;
+            return;
+          }
+        } catch (err) {
+          this.errorText = "Supervisor polling failed.";
+          this.supervisorRunId = null;
+          this.supervisorStatus = "failed";
+          logger.error("supervisor.poll.error", {
+            runId,
+            error: err instanceof Error ? err.message : "unknown"
+          });
+          return;
+        }
+      }
+    },
+    ingestSupervisorRun(run: SupervisorRun, conversationId: string) {
+      const conversationStore = useConversationStore();
+
+      for (const task of run.tasks) {
+        if (task.status === "running") continue;
+        const workerKey = `run:${run.id}:task:${task.index}:worker`;
+        if (!this.supervisorSeenEventKeys[workerKey] && task.workerOutput.trim()) {
+          conversationStore.addMessage({
+            id: uid(),
+            conversationId,
+            role: "assistant",
+            content: `[${run.workerName}] Task ${task.index}: ${task.title}\n${task.workerOutput}`,
+            status: "done",
+            createdAt: now()
+          });
+          this.supervisorSeenEventKeys[workerKey] = true;
+        }
+
+        const reviewKey = `run:${run.id}:task:${task.index}:review`;
+        if (!this.supervisorSeenEventKeys[reviewKey]) {
+          conversationStore.addMessage({
+            id: uid(),
+            conversationId,
+            role: "assistant",
+            content:
+              `[${run.primaryName}] Review Task ${task.index}: ${task.reviewVerdict}\n` +
+              `${task.reviewFeedback || "No feedback."}`,
+            status: "done",
+            createdAt: now()
+          });
+          this.supervisorSeenEventKeys[reviewKey] = true;
+        }
+      }
+
+      const summaryKey = `run:${run.id}:summary`;
+      if (!this.supervisorSeenEventKeys[summaryKey] && run.status !== "running" && run.summary.trim()) {
+        conversationStore.addMessage({
+          id: uid(),
+          conversationId,
+          role: "assistant",
+          content: `[${run.primaryName}] Supervisor summary (${run.status})\n${run.summary}`,
+          status: run.status === "failed" ? "error" : "done",
+          createdAt: now()
+        });
+        this.supervisorSeenEventKeys[summaryKey] = true;
+      }
     }
   }
 });

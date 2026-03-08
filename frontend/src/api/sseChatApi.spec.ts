@@ -197,4 +197,77 @@ describe("SseChatApi", () => {
     expect(body.apiReasoningModel).toBe("deepseek-reasoner");
     expect(Array.isArray(body.attachments)).toBe(true);
   });
+
+  it("calls supervisor start/get/abort endpoints", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          run: {
+            id: "r1",
+            conversationId: "c1",
+            objective: "obj",
+            planText: "",
+            primaryName: "Primary AI",
+            workerName: "Worker AI",
+            status: "running",
+            summary: "",
+            createdAt: new Date().toISOString(),
+            tasks: []
+          }
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          run: {
+            id: "r1",
+            conversationId: "c1",
+            objective: "obj",
+            planText: "",
+            primaryName: "Primary AI",
+            workerName: "Worker AI",
+            status: "completed",
+            summary: "done",
+            createdAt: new Date().toISOString(),
+            tasks: []
+          }
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          run: {
+            id: "r1",
+            conversationId: "c1",
+            objective: "obj",
+            planText: "",
+            primaryName: "Primary AI",
+            workerName: "Worker AI",
+            status: "aborted",
+            summary: "aborted",
+            createdAt: new Date().toISOString(),
+            tasks: []
+          }
+        })
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const api = new SseChatApi({
+      baseUrl: "http://127.0.0.1:8000/api",
+      streamFormat: "json"
+    });
+
+    const started = await api.startSupervisor({ conversationId: "c1", objective: "obj" });
+    expect(started.status).toBe("running");
+    const current = await api.getSupervisor("r1");
+    expect(current.status).toBe("completed");
+    const aborted = await api.abortSupervisor("r1");
+    expect(aborted.status).toBe("aborted");
+
+    expect((fetchMock.mock.calls[0][0] as string).endsWith("/supervisor/run/start")).toBe(true);
+    expect((fetchMock.mock.calls[1][0] as string).endsWith("/supervisor/run/r1")).toBe(true);
+    expect((fetchMock.mock.calls[2][0] as string).endsWith("/supervisor/run/r1/abort")).toBe(true);
+  });
 });
