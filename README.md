@@ -47,6 +47,26 @@ npm run test
 npm run build
 ```
 
+## One-Command Local Dev (Backend + Frontend)
+
+From project root:
+
+```powershell
+.\scripts\dev-up.ps1
+```
+
+What it does:
+- starts backend first (`127.0.0.1:8000`)
+- waits for `/health` to return `ok`
+- starts frontend in SSE mode (`127.0.0.1:5173`)
+- stops backend automatically when frontend process exits
+
+Optional:
+
+```powershell
+.\scripts\dev-up.ps1 -SkipInstall
+```
+
 ## Backend Run
 
 Requirements: Python 3.9+
