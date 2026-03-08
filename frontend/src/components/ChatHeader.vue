@@ -29,7 +29,7 @@ function onToggleDeepThinking(event: Event) {
         <div class="icon-glow"></div>
       </div>
       <div class="header-info">
-        <h1>{{ props.title || 'New Chat' }}</h1>
+        <h1>{{ props.title || "New Chat" }}</h1>
         <p class="subtitle">
           <span class="status-dot"></span>
           <span class="status-text">Assistant is online</span>
@@ -39,20 +39,20 @@ function onToggleDeepThinking(event: Event) {
 
     <div class="header-actions">
       <button class="header-btn" title="Clear chat">
-        <span class="btn-icon">🗑️</span>
+        <span class="btn-icon">X</span>
         <span class="btn-text">Clear</span>
       </button>
-      
+
       <label class="thinking-toggle">
         <input type="checkbox" :checked="showThinking" @change="onToggleThinking" />
         <span class="toggle-slider"></span>
-        <span class="toggle-text">Show thinking</span>
+        <span class="toggle-text">Show reasoning</span>
       </label>
 
       <label class="thinking-toggle deep-thinking-toggle">
         <input type="checkbox" :checked="enableDeepThinking" @change="onToggleDeepThinking" />
         <span class="toggle-slider"></span>
-        <span class="toggle-text">Deep thinking</span>
+        <span class="toggle-text">Enable deep thinking</span>
       </label>
     </div>
   </header>
@@ -70,7 +70,7 @@ function onToggleDeepThinking(event: Event) {
 }
 
 .chat-header::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: 0;
   left: 24px;
@@ -104,7 +104,7 @@ function onToggleDeepThinking(event: Event) {
 .icon-glow {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3), transparent);
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.3), transparent);
 }
 
 .header-info {
@@ -144,8 +144,15 @@ function onToggleDeepThinking(event: Event) {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(0.9); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(0.9);
+  }
 }
 
 .status-text {
@@ -214,14 +221,14 @@ function onToggleDeepThinking(event: Event) {
   width: 36px;
   height: 20px;
   background: var(--bg-soft);
-  border-radius: var(--radius-full);
+  border-radius: 999px;
   position: relative;
   transition: all var(--transition-fast);
   border: 1px solid var(--border);
 }
 
 .toggle-slider::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 2px;
   left: 2px;
