@@ -164,27 +164,9 @@ Acceptance:
 10. Done: Add DeepSeek default provider profile (`deepseek-chat` / `deepseek-reasoner`) with per-request model switch by `enableThinking`.
 11. Done: Add user-level runtime API settings (API key/baseUrl/model) and optional web-search toggle in desktop composer.
 
-## 9. Plan Correction Log
-- 2026-03-08: Added top-level project plan document as requested.
-- 2026-03-08: Confirmed layered directory design to avoid single-folder implementation.
-- 2026-03-08: Added structured debug logging framework and integrated key runtime events.
-- 2026-03-08: Installed local Node.js runtime and npm, then completed dependency installation and test/build validation.
-- 2026-03-08: Locked backend strategy to no-login, open access by default.
-- 2026-03-08: Repaired plan text corruption and aligned completed items with current source code.
-- 2026-03-08: Re-synced `.trae/skills` to `C:\Users\Lj\.codex\skills` and verified hash consistency.
-- 2026-03-08: Added Python backend layered skeleton aligned with frontend layering for easier troubleshooting.
-- 2026-03-08: Added dual stream transport plan (`json` SSE / `binary` chunked) per runtime needs.
-- 2026-03-08: Added dedicated frontend/backend skills so each side can be developed without repeatedly reading the full project plan.
-- 2026-03-08: Completed Stage A adapter baseline (`SseChatApi`) with env-based mode switch and dual stream parser.
-- 2026-03-08: Completed Stage B frontend-side persistence integration (`listMessages` load on init/select).
-- 2026-03-08: Added frontend API retry/timeout strategy and tests for retry/history behavior.
-- 2026-03-08: Completed Stage C baseline (CI workflow, log redaction, env layering).
-- 2026-03-08: Added backend XML logging config loading (`backend/logging.xml`) with startup initialization.
-- 2026-03-08: Migrated frontend root into `frontend/` and aligned docs/skills/CI paths.
-- 2026-03-08: Added thinking stream (`event: thinking`) end-to-end and desktop UI toggle for optional display.
-- 2026-03-08: Added optional OpenAI-compatible backend adapter via `CHATWEB_AI_*` config, with mock fallback.
-- 2026-03-08: Switched default AI profile to DeepSeek and split normal/reasoning models for the deep-thinking toggle path.
-- 2026-03-08: Fixed DeepSeek connectivity by adding `CHATWEB_AI_HTTP_TRUST_ENV` (default `false`) to avoid inherited proxy-caused `httpx.ConnectError`.
-- 2026-03-08: Simplified desktop UI density, merged composer actions into a single Send/Stop button, and persisted per-message thinking expansion across conversation switching.
-- 2026-03-08: Added request-level provider overrides and optional web-search context pipeline, configurable directly from frontend page settings.
-- 2026-03-08: Review fix: binary stream mode now also honors runtime provider overrides, and web-search timeout reduced to 2s default to avoid long blocking delays.
+## 9. Change History
+Use Git history for all detailed corrections and timeline:
+
+```bash
+git log --oneline --decorate --graph
+```
