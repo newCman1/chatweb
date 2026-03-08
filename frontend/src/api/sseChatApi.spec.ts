@@ -45,6 +45,42 @@ describe("SseChatApi", () => {
     expect(out.join("")).toBe("hello world");
   });
 
+  it("parses thinking events from sse stream", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      body: textStream(
+        'event: thinking\ndata: {"delta":"analyzing "}\n\n' +
+          'event: chunk\ndata: {"delta":"answer"}\n\n' +
+          'event: done\ndata: {"done":true}\n\n'
+      )
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const api = new SseChatApi({
+      baseUrl: "http://127.0.0.1:8000/api",
+      streamFormat: "json"
+    });
+    const messages: Message[] = [
+      {
+        id: "u1",
+        conversationId: "c1",
+        role: "user",
+        content: "hello",
+        status: "done",
+        createdAt: new Date().toISOString()
+      }
+    ];
+
+    const thinking: string[] = [];
+    const answer: string[] = [];
+    for await (const chunk of api.streamReply({ conversationId: "c1", messages })) {
+      if (chunk.thinkingDelta) thinking.push(chunk.thinkingDelta);
+      if (chunk.delta) answer.push(chunk.delta);
+    }
+    expect(thinking.join("")).toBe("analyzing ");
+    expect(answer.join("")).toBe("answer");
+  });
+
   it("retries initial request on transient failure", async () => {
     const fetchMock = vi
       .fn()

@@ -10,6 +10,7 @@ interface ChatState {
   activeAssistantMessageId: string | null;
   activeAbortController: AbortController | null;
   errorText: string | null;
+  showThinking: boolean;
 }
 
 const uid = () => crypto.randomUUID();
@@ -21,7 +22,8 @@ export const useChatStore = defineStore("chat", {
     activeConversationId: null,
     activeAssistantMessageId: null,
     activeAbortController: null,
-    errorText: null
+    errorText: null,
+    showThinking: false
   }),
   actions: {
     async send(content: string) {
@@ -54,6 +56,7 @@ export const useChatStore = defineStore("chat", {
         conversationId,
         role: "assistant",
         content: "",
+        thinking: "",
         status: "streaming",
         createdAt: now()
       };
@@ -79,6 +82,15 @@ export const useChatStore = defineStore("chat", {
             const next = `${current?.content ?? ""}${chunk.delta}`;
             conversationStore.patchMessage(conversationId, assistantMessageId, {
               content: next
+            });
+          }
+          if (chunk.thinkingDelta) {
+            const current = conversationStore.messagesByConversation[conversationId].find(
+              (m) => m.id === assistantMessageId
+            );
+            const nextThinking = `${current?.thinking ?? ""}${chunk.thinkingDelta}`;
+            conversationStore.patchMessage(conversationId, assistantMessageId, {
+              thinking: nextThinking
             });
           }
           if (chunk.done) {
@@ -115,6 +127,9 @@ export const useChatStore = defineStore("chat", {
       logger.warn("chat.stop.requested", { conversationId: this.activeConversationId });
       this.activeAbortController?.abort();
       chatApi.abortStream(this.activeConversationId);
+    },
+    setShowThinking(show: boolean) {
+      this.showThinking = show;
     }
   }
 });

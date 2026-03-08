@@ -188,6 +188,14 @@ export class SseChatApi implements IChatApi {
             continue;
           }
         }
+        if (parsed.event === "thinking") {
+          try {
+            const payload = JSON.parse(parsed.data) as { delta?: string };
+            if (payload.delta) yield { delta: "", thinkingDelta: payload.delta };
+          } catch {
+            continue;
+          }
+        }
         if (parsed.event === "done") {
           yield { delta: "", done: true };
           return;

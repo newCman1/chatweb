@@ -1,38 +1,37 @@
 <script setup lang="ts">
-import { computed } from "vue";
-
 const props = defineProps<{
   title: string;
+  showThinking: boolean;
 }>();
 
-const displayTitle = computed(() => {
-  if (props.title === "新会话") {
-    return "新对话";
-  }
-  return props.title;
-});
+const emit = defineEmits<{
+  "update:showThinking": [value: boolean];
+}>();
+
+function onToggleThinking(event: Event) {
+  const target = event.target as HTMLInputElement;
+  emit("update:showThinking", target.checked);
+}
 </script>
 
 <template>
   <header class="chat-header">
     <div class="header-left">
-      <div class="header-icon">💬</div>
+      <div class="header-icon">AI</div>
       <div class="header-info">
-        <h1>{{ displayTitle }}</h1>
+        <h1>{{ props.title }}</h1>
         <p class="subtitle">
           <span class="status-dot"></span>
-          AI 助手在线
+          Assistant online
         </p>
       </div>
     </div>
-    
+
     <div class="header-actions">
-      <button class="header-btn" title="清空对话">
-        <span>🗑️</span>
-      </button>
-      <button class="header-btn" title="设置">
-        <span>⚙️</span>
-      </button>
+      <label class="thinking-toggle">
+        <input type="checkbox" :checked="showThinking" @change="onToggleThinking" />
+        Show thinking
+      </label>
     </div>
   </header>
 </template>
@@ -58,10 +57,12 @@ const displayTitle = computed(() => {
   height: 40px;
   border-radius: var(--radius-md);
   background: var(--brand-gradient);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
   box-shadow: var(--shadow-sm);
 }
 
@@ -100,32 +101,38 @@ const displayTitle = computed(() => {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .header-actions {
   display: flex;
-  gap: 8px;
+  align-items: center;
 }
 
-.header-btn {
-  width: 36px;
-  height: 36px;
+.thinking-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
+  padding: 6px 10px;
   background: var(--bg-panel);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  transition: all var(--transition-fast);
 }
 
-.header-btn:hover {
-  background: var(--bg-soft);
+.thinking-toggle input {
+  margin: 0;
+  cursor: pointer;
+}
+
+.thinking-toggle:hover {
   border-color: var(--brand);
-  transform: translateY(-1px);
 }
 </style>

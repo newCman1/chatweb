@@ -7,6 +7,7 @@ export interface Message {
   conversationId: string;
   role: MessageRole;
   content: string;
+  thinking?: string;
   status: MessageStatus;
   createdAt: string;
 }
@@ -20,6 +21,7 @@ export interface Conversation {
 
 export interface StreamChunk {
   delta: string;
+  thinkingDelta?: string;
   done?: boolean;
 }
 

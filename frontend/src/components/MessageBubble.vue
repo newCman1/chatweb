@@ -4,47 +4,50 @@ import { computed } from "vue";
 
 const props = defineProps<{
   message: Message;
+  showThinking: boolean;
 }>();
 
 const isUser = computed(() => props.message.role === "user");
-const isAssistant = computed(() => props.message.role === "assistant");
 
 const formattedTime = computed(() => {
   const date = new Date(props.message.createdAt);
-  return date.toLocaleTimeString("zh-CN", {
+  return date.toLocaleTimeString("en-US", {
     hour: "2-digit",
-    minute: "2-digit",
+    minute: "2-digit"
   });
 });
 
 const statusText = computed(() => {
   switch (props.message.status) {
     case "streaming":
-      return "生成中...";
+      return "Generating...";
     case "error":
-      return "生成失败";
+      return "Failed";
     case "stopped":
-      return "已停止";
+      return "Stopped";
     default:
       return "";
   }
 });
+
+const hasThinking = computed(() => Boolean(props.message.thinking?.trim()));
 </script>
 
 <template>
   <article class="message-row" :class="message.role">
-    <!-- 头像 -->
     <div class="message-avatar" :class="message.role">
-      {{ isUser ? "我" : "AI" }}
+      {{ isUser ? "You" : "AI" }}
     </div>
 
-    <!-- 消息内容包装器 -->
     <div class="message-bubble-wrapper">
-      <!-- 消息气泡 -->
       <div class="message-bubble" :class="message.role">
+        <details v-if="message.role === 'assistant' && showThinking && hasThinking" class="thinking-box">
+          <summary>Thinking</summary>
+          <pre class="thinking-content">{{ message.thinking }}</pre>
+        </details>
+
         <div class="message-content">{{ message.content }}</div>
 
-        <!-- 打字指示器 -->
         <div v-if="message.status === 'streaming' && !message.content" class="typing-indicator">
           <span></span>
           <span></span>
@@ -52,7 +55,6 @@ const statusText = computed(() => {
         </div>
       </div>
 
-      <!-- 元信息 -->
       <div class="message-meta">
         <span class="message-time">{{ formattedTime }}</span>
         <span v-if="statusText" class="status-indicator" :class="message.status">
@@ -62,3 +64,29 @@ const statusText = computed(() => {
     </div>
   </article>
 </template>
+
+<style scoped>
+.thinking-box {
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  padding: 6px 8px;
+}
+
+.thinking-box summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.thinking-content {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-main);
+}
+</style>

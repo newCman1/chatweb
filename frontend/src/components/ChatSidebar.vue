@@ -23,26 +23,21 @@ function formatTime(isoString: string): string {
   const date = new Date(isoString);
   const now = new Date();
   const diff = now.getTime() - date.getTime();
-  
-  // 小于1小时显示分钟
+
   if (diff < 60 * 60 * 1000) {
     const mins = Math.floor(diff / (60 * 1000));
-    return mins < 1 ? '刚刚' : `${mins}分钟前`;
+    return mins < 1 ? "just now" : `${mins}m ago`;
   }
-  
-  // 小于24小时显示小时
+
   if (diff < 24 * 60 * 60 * 1000) {
     const hours = Math.floor(diff / (60 * 60 * 1000));
-    return `${hours}小时前`;
+    return `${hours}h ago`;
   }
-  
-  // 小于7天显示星期几
+
   if (diff < 7 * 24 * 60 * 60 * 1000) {
-    const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-    return days[date.getDay()];
+    return date.toLocaleDateString("en-US", { weekday: "short" });
   }
-  
-  // 否则显示日期
+
   return `${date.getMonth() + 1}/${date.getDate()}`;
 }
 </script>
@@ -51,51 +46,35 @@ function formatTime(isoString: string): string {
   <aside class="chat-sidebar">
     <div class="sidebar-header">
       <h2 class="sidebar-title">Chat Web</h2>
-      <p class="sidebar-subtitle">AI 助手</p>
+      <p class="sidebar-subtitle">Desktop Mode</p>
     </div>
-    
-    <button class="new-chat-btn" @click="$emit('create')">
-      新建会话
-    </button>
-    
+
+    <button class="new-chat-btn" @click="$emit('create')">New chat</button>
+
     <div class="conversations-section">
       <h3 class="section-title">
-        <span class="section-icon">💬</span>
-        会话列表
+        Conversations
         <span class="conversation-count">{{ conversations.length }}</span>
       </h3>
-      
+
       <ul class="conversation-list">
-        <li 
-          v-for="item in formattedConversations" 
-          :key="item.id"
-          class="conversation-item"
-        >
+        <li v-for="item in formattedConversations" :key="item.id" class="conversation-item">
           <button
             class="conversation-btn"
             :class="{ active: currentConversationId === item.id }"
             @click="$emit('select', item.id)"
           >
             <div class="conversation-content">
-              <span class="conversation-icon">💭</span>
               <span class="title">{{ item.title }}</span>
             </div>
             <span class="time">{{ item.formattedTime }}</span>
           </button>
         </li>
       </ul>
-      
+
       <div v-if="conversations.length === 0" class="empty-conversations">
-        <span class="empty-icon">📝</span>
-        <p>还没有会话</p>
-        <p class="empty-hint">点击上方按钮开始新对话</p>
-      </div>
-    </div>
-    
-    <div class="sidebar-footer">
-      <div class="user-info">
-        <div class="user-avatar">👤</div>
-        <span class="user-name">访客用户</span>
+        <p>No conversations yet.</p>
+        <p class="empty-hint">Create one to start chatting.</p>
       </div>
     </div>
   </aside>
@@ -142,10 +121,6 @@ function formatTime(isoString: string): string {
   letter-spacing: 0.5px;
 }
 
-.section-icon {
-  font-size: 14px;
-}
-
 .conversation-count {
   margin-left: auto;
   background: var(--bg-soft);
@@ -167,11 +142,6 @@ function formatTime(isoString: string): string {
   overflow: hidden;
 }
 
-.conversation-icon {
-  font-size: 14px;
-  flex-shrink: 0;
-}
-
 .empty-conversations {
   display: flex;
   flex-direction: column;
@@ -180,12 +150,6 @@ function formatTime(isoString: string): string {
   padding: 32px 16px;
   color: var(--text-tertiary);
   text-align: center;
-}
-
-.empty-icon {
-  font-size: 32px;
-  margin-bottom: 8px;
-  opacity: 0.5;
 }
 
 .empty-conversations p {
@@ -197,37 +161,5 @@ function formatTime(isoString: string): string {
   font-size: 12px;
   margin-top: 4px;
   opacity: 0.7;
-}
-
-.sidebar-footer {
-  margin-top: auto;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px;
-  border-radius: var(--radius-md);
-  background: var(--bg-soft);
-}
-
-.user-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--brand-soft);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-}
-
-.user-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-main);
 }
 </style>

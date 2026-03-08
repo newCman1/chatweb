@@ -10,7 +10,7 @@ import { useChatStore } from "@/stores/chat";
 const conversationStore = useConversationStore();
 const chatStore = useChatStore();
 
-const title = computed(() => conversationStore.currentConversation?.title ?? "新会话");
+const title = computed(() => conversationStore.currentConversation?.title ?? "New Chat");
 const messages = computed(() => conversationStore.currentMessages);
 
 async function onCreateConversation() {
@@ -25,7 +25,6 @@ async function onSend(content: string) {
   await chatStore.send(content);
 }
 
-// Auto-clear error message when user starts typing or switches conversation
 watch(
   () => chatStore.errorText,
   (error) => {
@@ -55,9 +54,13 @@ onMounted(async () => {
     />
 
     <section class="chat-main">
-      <ChatHeader :title="title" />
-      <MessageList :messages="messages" />
-      <p v-if="chatStore.errorText" class="error-text">{{ chatStore.errorText }}</p>
+      <ChatHeader
+        :title="title"
+        :show-thinking="chatStore.showThinking"
+        @update:show-thinking="chatStore.setShowThinking"
+      />
+      <MessageList :messages="messages" :show-thinking="chatStore.showThinking" />
+      <p v-if="chatStore.errorText" class="error-toast">{{ chatStore.errorText }}</p>
       <ChatInput
         :disabled="!conversationStore.currentConversationId"
         :is-streaming="chatStore.isStreaming"

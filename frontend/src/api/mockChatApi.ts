@@ -20,6 +20,10 @@ function buildAssistantReply(userText: string): string {
   return `You said: ${userText}\n\n${base}\n${tips}`;
 }
 
+function buildThinkingText(userText: string): string {
+  return `Understanding your request: "${userText.slice(0, 60)}".\nPlanning a concise and practical answer.\nGenerating final response.`;
+}
+
 export class MockChatApi implements IChatApi {
   private conversations: Conversation[] = [];
   private messagesByConversation: Record<string, Message[]> = {};
@@ -65,9 +69,21 @@ export class MockChatApi implements IChatApi {
     }
 
     const fullText = buildAssistantReply(userMessage?.content ?? "");
+    const thinkingText = buildThinkingText(userMessage?.content ?? "");
+    const thinkingChunks = splitToChunks(thinkingText);
     const chunks = splitToChunks(fullText);
 
     try {
+      for (const chunk of thinkingChunks) {
+        if (external?.aborted || internal.signal.aborted) {
+          logger.warn("api.stream.aborted", { conversationId: input.conversationId });
+          const err = new Error("Stream aborted");
+          err.name = "AbortError";
+          throw err;
+        }
+        yield { delta: "", thinkingDelta: chunk };
+        await wait(this.tokenDelayMs);
+      }
       for (const chunk of chunks) {
         if (external?.aborted || internal.signal.aborted) {
           logger.warn("api.stream.aborted", { conversationId: input.conversationId });
