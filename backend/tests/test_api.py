@@ -1,6 +1,7 @@
 import httpx
 import pytest
 from fastapi.testclient import TestClient
+import time
 
 from app.main import app
 from app.services import chat_service as chat_service_module
@@ -330,3 +331,61 @@ def test_supervisor_run_validation_error():
     assert response.status_code == 400
     payload = response.json()["error"]
     assert payload["code"] == "SUPERVISOR_INVALID_MAX_TASKS"
+
+
+def test_supervisor_start_and_abort(monkeypatch):
+    async def fake_plan(_objective, _history, _max_tasks):
+        return "1. Step one\n2. Step two"
+
+    async def fake_worker(_task_title, _objective, _plan_text, _shared_history, review_feedback=None):
+        _ = review_feedback
+        await asyncio.sleep(0.3)
+        return "worker output"
+
+    async def fake_review(_task_title, _objective, _plan_text, _worker_output):
+        return ("PASS", "OK")
+
+    async def fake_summary(_objective, _plan_text, tasks):
+        return f"done {len(tasks)}"
+
+    import asyncio
+
+    monkeypatch.setattr(supervisor_service_module.supervisor_service, "_primary_plan", fake_plan)
+    monkeypatch.setattr(supervisor_service_module.supervisor_service, "_worker_execute", fake_worker)
+    monkeypatch.setattr(supervisor_service_module.supervisor_service, "_primary_review", fake_review)
+    monkeypatch.setattr(supervisor_service_module.supervisor_service, "_primary_summary", fake_summary)
+
+    create = client.post("/api/conversations")
+    assert create.status_code == 200
+    conversation_id = create.json()["conversation"]["id"]
+
+    start_response = client.post(
+        "/api/supervisor/run/start",
+        json={
+            "conversationId": conversation_id,
+            "objective": "Do multi-step task",
+            "maxTasks": 2,
+            "maxRetries": 0,
+        },
+    )
+    assert start_response.status_code == 200
+    run = start_response.json()["run"]
+    run_id = run["id"]
+    assert run["status"] in {"running", "completed"}
+
+    abort_response = client.post(f"/api/supervisor/run/{run_id}/abort")
+    assert abort_response.status_code == 200
+    aborted = abort_response.json()["run"]
+    assert aborted["status"] == "aborted"
+
+    time.sleep(0.1)
+    get_response = client.get(f"/api/supervisor/run/{run_id}")
+    assert get_response.status_code == 200
+    assert get_response.json()["run"]["status"] == "aborted"
+
+
+def test_supervisor_abort_not_found():
+    response = client.post("/api/supervisor/run/not-exists/abort")
+    assert response.status_code == 404
+    payload = response.json()["error"]
+    assert payload["code"] == "SUPERVISOR_RUN_NOT_FOUND"

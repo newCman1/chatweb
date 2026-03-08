@@ -141,6 +141,8 @@ Request payload can include:
 - `POST /api/chat/stream`
 - `POST /api/chat/abort`
 - `POST /api/supervisor/run`
+- `POST /api/supervisor/run/start`
+- `POST /api/supervisor/run/{run_id}/abort`
 - `GET /api/supervisor/run/{run_id}`
 
 Error response contract (non-stream endpoints):
@@ -194,6 +196,11 @@ Request:
 ```
 
 Response includes run status, task-by-task worker output, review verdict, and summary.
+
+Async mode:
+- `POST /api/supervisor/run/start` returns immediately with `status=running`.
+- Poll via `GET /api/supervisor/run/{run_id}`.
+- Stop via `POST /api/supervisor/run/{run_id}/abort`.
 
 Env options (all optional, fallback to `CHATWEB_AI_*` when empty):
 - `CHATWEB_SUPERVISOR_PRIMARY_NAME`

@@ -2,8 +2,8 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 
-SupervisorRunStatus = Literal["completed", "failed"]
-SupervisorTaskStatus = Literal["completed", "failed"]
+SupervisorRunStatus = Literal["running", "completed", "failed", "aborted"]
+SupervisorTaskStatus = Literal["running", "completed", "failed", "aborted"]
 
 
 @dataclass

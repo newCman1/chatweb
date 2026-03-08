@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import re
 from dataclasses import asdict
@@ -19,22 +20,23 @@ from app.services.chat_service import chat_service
 class SupervisorService:
     def __init__(self) -> None:
         self._runs: dict[str, SupervisorRunRecord] = {}
+        self._run_tasks: dict[str, asyncio.Task[None]] = {}
+        self._abort_flags: dict[str, asyncio.Event] = {}
+        self._lock = asyncio.Lock()
         self._logger = logging.getLogger("chatweb.backend.services.supervisor")
 
     async def run(self, payload: SupervisorRunRequest) -> SupervisorRunRecord:
-        objective = payload.objective.strip()
-        if not objective:
-            raise AppError("SUPERVISOR_EMPTY_OBJECTIVE", "objective is required", status_code=400)
-        if payload.max_tasks <= 0 or payload.max_tasks > 8:
-            raise AppError("SUPERVISOR_INVALID_MAX_TASKS", "maxTasks must be between 1 and 8", status_code=400)
-        if payload.max_retries < 0 or payload.max_retries > 3:
-            raise AppError("SUPERVISOR_INVALID_MAX_RETRIES", "maxRetries must be between 0 and 3", status_code=400)
-
+        objective = self._validate_payload(payload)
         run_id = str(uuid4())
+        record = self._new_run_record(run_id, payload, objective)
+        async with self._lock:
+            self._runs[run_id] = record
+
+        abort_flag = asyncio.Event()
         log_event(
             self._logger,
             logging.INFO,
-            "supervisor.run.start",
+            "supervisor.run.sync.start",
             {
                 "run_id": run_id,
                 "conversation_id": payload.conversation_id,
@@ -42,85 +44,205 @@ class SupervisorService:
                 "max_retries": payload.max_retries,
             },
         )
-        history = await chat_service.list_messages(payload.conversation_id)
-        shared_history = self._format_history(history)
-
-        plan_text = payload.plan.strip() if payload.plan and payload.plan.strip() else ""
-        if not plan_text:
-            plan_text = await self._primary_plan(objective, shared_history, payload.max_tasks)
-        tasks = self._extract_tasks(plan_text, payload.max_tasks)
-        if not tasks:
-            tasks = [objective]
-
-        task_rows: list[SupervisorTaskRecord] = []
-        for index, title in enumerate(tasks, start=1):
-            retries = 0
-            worker_output = await self._worker_execute(title, objective, plan_text, shared_history)
-            verdict, feedback = await self._primary_review(title, objective, plan_text, worker_output)
-
-            while verdict == "REVISE" and retries < payload.max_retries:
-                retries += 1
-                worker_output = await self._worker_execute(
-                    title,
-                    objective,
-                    plan_text,
-                    shared_history,
-                    review_feedback=feedback,
-                )
-                verdict, feedback = await self._primary_review(title, objective, plan_text, worker_output)
-
-            status = "completed" if verdict == "PASS" else "failed"
-            task_rows.append(
-                SupervisorTaskRecord(
-                    index=index,
-                    title=title,
-                    worker_output=worker_output,
-                    review_verdict=verdict,
-                    review_feedback=feedback,
-                    status=status,
-                    retries=retries,
-                )
-            )
-            log_event(
-                self._logger,
-                logging.INFO,
-                "supervisor.task.done",
-                {
-                    "run_id": run_id,
-                    "task_index": index,
-                    "status": status,
-                    "retries": retries,
-                },
-            )
-
-        summary = await self._primary_summary(objective, plan_text, task_rows)
-        run_status = "completed" if all(item.status == "completed" for item in task_rows) else "failed"
-        record = SupervisorRunRecord(
-            id=run_id,
-            conversation_id=payload.conversation_id,
-            objective=objective,
-            plan_text=plan_text,
-            primary_name=settings.supervisor_primary_name,
-            worker_name=settings.supervisor_worker_name,
-            status=run_status,
-            summary=summary,
-            created_at=utc_now_iso(),
-            tasks=task_rows,
-        )
-        self._runs[run_id] = record
+        await self._execute_pipeline(record, payload, abort_flag)
         log_event(
             self._logger,
             logging.INFO,
-            "supervisor.run.done",
-            {"run_id": run_id, "status": run_status, "task_count": len(task_rows)},
+            "supervisor.run.sync.done",
+            {"run_id": run_id, "status": record.status, "task_count": len(record.tasks)},
         )
         return record
+
+    async def start(self, payload: SupervisorRunRequest) -> SupervisorRunRecord:
+        objective = self._validate_payload(payload)
+        run_id = str(uuid4())
+        record = self._new_run_record(run_id, payload, objective)
+        abort_flag = asyncio.Event()
+
+        async with self._lock:
+            self._runs[run_id] = record
+            self._abort_flags[run_id] = abort_flag
+            self._run_tasks[run_id] = asyncio.create_task(self._execute_in_background(run_id, payload, abort_flag))
+
+        log_event(
+            self._logger,
+            logging.INFO,
+            "supervisor.run.async.started",
+            {"run_id": run_id, "conversation_id": payload.conversation_id},
+        )
+        return record
+
+    async def abort(self, run_id: str) -> SupervisorRunRecord:
+        async with self._lock:
+            row = self._runs.get(run_id)
+            if not row:
+                raise AppError("SUPERVISOR_RUN_NOT_FOUND", f"Run not found: {run_id}", status_code=404)
+            if row.status in {"completed", "failed", "aborted"}:
+                return row
+
+            row.status = "aborted"
+            if not row.summary:
+                row.summary = "Run aborted by user."
+            for item in row.tasks:
+                if item.status == "running":
+                    item.status = "aborted"
+                    if not item.review_feedback:
+                        item.review_feedback = "Aborted by user."
+            flag = self._abort_flags.get(run_id)
+            task = self._run_tasks.get(run_id)
+
+        if flag:
+            flag.set()
+        if task and not task.done():
+            task.cancel()
+
+        log_event(self._logger, logging.WARNING, "supervisor.run.abort", {"run_id": run_id})
+        return row
 
     def get_run(self, run_id: str) -> SupervisorRunRecord:
         row = self._runs.get(run_id)
         if not row:
             raise AppError("SUPERVISOR_RUN_NOT_FOUND", f"Run not found: {run_id}", status_code=404)
         return row
+
+    async def _execute_in_background(
+        self,
+        run_id: str,
+        payload: SupervisorRunRequest,
+        abort_flag: asyncio.Event,
+    ) -> None:
+        row = self.get_run(run_id)
+        try:
+            await self._execute_pipeline(row, payload, abort_flag)
+        except asyncio.CancelledError:
+            row.status = "aborted"
+            if not row.summary:
+                row.summary = "Run aborted by user."
+            for item in row.tasks:
+                if item.status == "running":
+                    item.status = "aborted"
+                    if not item.review_feedback:
+                        item.review_feedback = "Aborted by user."
+            log_event(self._logger, logging.WARNING, "supervisor.run.cancelled", {"run_id": run_id})
+        except AppError as error:
+            row.status = "failed"
+            row.summary = f"{error.code}: {error.message}"
+            log_event(
+                self._logger,
+                logging.ERROR,
+                "supervisor.run.app_error",
+                {"run_id": run_id, "code": error.code, "message": error.message},
+            )
+        except Exception as error:
+            row.status = "failed"
+            row.summary = "Unexpected supervisor failure."
+            log_event(
+                self._logger,
+                logging.ERROR,
+                "supervisor.run.error",
+                {"run_id": run_id, "error": str(error)},
+            )
+        finally:
+            async with self._lock:
+                self._run_tasks.pop(run_id, None)
+                self._abort_flags.pop(run_id, None)
+
+    async def _execute_pipeline(
+        self,
+        row: SupervisorRunRecord,
+        payload: SupervisorRunRequest,
+        abort_flag: asyncio.Event,
+    ) -> None:
+        history = await chat_service.list_messages(payload.conversation_id)
+        shared_history = self._format_history(history)
+
+        plan_text = payload.plan.strip() if payload.plan and payload.plan.strip() else ""
+        if not plan_text:
+            self._raise_if_aborted(abort_flag)
+            plan_text = await self._primary_plan(row.objective, shared_history, payload.max_tasks)
+        row.plan_text = plan_text
+
+        task_titles = self._extract_tasks(plan_text, payload.max_tasks)
+        if not task_titles:
+            task_titles = [row.objective]
+
+        row.tasks.clear()
+        for index, title in enumerate(task_titles, start=1):
+            self._raise_if_aborted(abort_flag)
+            item = SupervisorTaskRecord(
+                index=index,
+                title=title,
+                worker_output="",
+                review_verdict="PENDING",
+                review_feedback="",
+                status="running",
+                retries=0,
+            )
+            row.tasks.append(item)
+
+            worker_output = await self._worker_execute(title, row.objective, row.plan_text, shared_history)
+            self._raise_if_aborted(abort_flag)
+            verdict, feedback = await self._primary_review(title, row.objective, row.plan_text, worker_output)
+
+            while verdict == "REVISE" and item.retries < payload.max_retries:
+                self._raise_if_aborted(abort_flag)
+                item.retries += 1
+                worker_output = await self._worker_execute(
+                    title,
+                    row.objective,
+                    row.plan_text,
+                    shared_history,
+                    review_feedback=feedback,
+                )
+                verdict, feedback = await self._primary_review(title, row.objective, row.plan_text, worker_output)
+
+            item.worker_output = worker_output
+            item.review_verdict = verdict
+            item.review_feedback = feedback
+            item.status = "completed" if verdict == "PASS" else "failed"
+            log_event(
+                self._logger,
+                logging.INFO,
+                "supervisor.task.done",
+                {
+                    "run_id": row.id,
+                    "task_index": item.index,
+                    "status": item.status,
+                    "retries": item.retries,
+                },
+            )
+
+        self._raise_if_aborted(abort_flag)
+        row.summary = await self._primary_summary(row.objective, row.plan_text, row.tasks)
+        row.status = "completed" if all(item.status == "completed" for item in row.tasks) else "failed"
+
+    def _validate_payload(self, payload: SupervisorRunRequest) -> str:
+        objective = payload.objective.strip()
+        if not objective:
+            raise AppError("SUPERVISOR_EMPTY_OBJECTIVE", "objective is required", status_code=400)
+        if payload.max_tasks <= 0 or payload.max_tasks > 8:
+            raise AppError("SUPERVISOR_INVALID_MAX_TASKS", "maxTasks must be between 1 and 8", status_code=400)
+        if payload.max_retries < 0 or payload.max_retries > 3:
+            raise AppError("SUPERVISOR_INVALID_MAX_RETRIES", "maxRetries must be between 0 and 3", status_code=400)
+        return objective
+
+    def _new_run_record(self, run_id: str, payload: SupervisorRunRequest, objective: str) -> SupervisorRunRecord:
+        return SupervisorRunRecord(
+            id=run_id,
+            conversation_id=payload.conversation_id,
+            objective=objective,
+            plan_text=payload.plan.strip() if payload.plan and payload.plan.strip() else "",
+            primary_name=settings.supervisor_primary_name,
+            worker_name=settings.supervisor_worker_name,
+            status="running",
+            summary="",
+            created_at=utc_now_iso(),
+            tasks=[],
+        )
+
+    def _raise_if_aborted(self, abort_flag: asyncio.Event) -> None:
+        if abort_flag.is_set():
+            raise asyncio.CancelledError()
 
     async def _primary_plan(self, objective: str, shared_history: str, max_tasks: int) -> str:
         messages = [

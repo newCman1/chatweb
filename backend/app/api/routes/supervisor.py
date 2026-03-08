@@ -29,6 +29,32 @@ async def run_supervisor(payload: SupervisorRunRequest) -> SupervisorRunResponse
     return SupervisorRunResponse(run=supervisor_to_dict(run))
 
 
+@router.post("/supervisor/run/start", response_model=SupervisorRunResponse)
+async def start_supervisor(payload: SupervisorRunRequest) -> SupervisorRunResponse:
+    log_event(
+        logger,
+        logging.INFO,
+        "supervisor.start.request",
+        {
+            "conversation_id": payload.conversation_id,
+            "objective_length": len(payload.objective.strip()),
+            "max_tasks": payload.max_tasks,
+            "max_retries": payload.max_retries,
+        },
+    )
+    run = await supervisor_service.start(payload)
+    log_event(logger, logging.INFO, "supervisor.start.response", {"run_id": run.id, "status": run.status})
+    return SupervisorRunResponse(run=supervisor_to_dict(run))
+
+
+@router.post("/supervisor/run/{run_id}/abort", response_model=SupervisorRunResponse)
+async def abort_supervisor(run_id: str) -> SupervisorRunResponse:
+    log_event(logger, logging.WARNING, "supervisor.abort.request", {"run_id": run_id})
+    run = await supervisor_service.abort(run_id)
+    log_event(logger, logging.WARNING, "supervisor.abort.response", {"run_id": run.id, "status": run.status})
+    return SupervisorRunResponse(run=supervisor_to_dict(run))
+
+
 @router.get("/supervisor/run/{run_id}", response_model=SupervisorRunResponse)
 async def get_supervisor_run(run_id: str) -> SupervisorRunResponse:
     log_event(logger, logging.INFO, "supervisor.get.start", {"run_id": run_id})

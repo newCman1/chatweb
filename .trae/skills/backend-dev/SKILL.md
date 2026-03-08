@@ -76,11 +76,16 @@ Use this skill whenever the task modifies backend code.
   - error logs (`*.error`)
   - stable error code response for non-stream failures
 - Supervisor mode rules:
-  - expose `POST /api/supervisor/run` and `GET /api/supervisor/run/{run_id}`
+  - expose:
+    - `POST /api/supervisor/run` (sync)
+    - `POST /api/supervisor/run/start` (async start)
+    - `POST /api/supervisor/run/{run_id}/abort` (interrupt)
+    - `GET /api/supervisor/run/{run_id}` (poll)
   - primary AI is responsible for plan/review/summary
   - worker AI is responsible for task execution
   - both must consume shared conversation history context
   - task rows should include verdict, feedback, retry count, and status
+  - run/task status lifecycle should support `running/completed/failed/aborted`
 
 ## Skill Sync Rule
 

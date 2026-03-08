@@ -166,6 +166,7 @@ Acceptance:
 12. Done: Add text attachment upload in composer and pass attachments to backend provider context.
 13. Done: Add configurable web-search provider (`duckduckgo` / `searxng` / `serpapi` / `tavily`) in backend config.
 14. Done: Add supervisor execution API (primary AI plans/reviews, worker AI executes) with shared conversation context.
+15. Done: Add supervisor async start + abort controls (`/start`, `/abort`) with run status lifecycle.
 
 ## 9. Change History
 Use Git history for all detailed corrections and timeline:
@@ -184,12 +185,10 @@ git log --oneline --decorate --graph
 - Both Primary/Worker must consume the same shared conversation history for the target `conversationId`.
 
 ### Control and Stop Rules (Current Stage)
-- Current supervisor API is synchronous run-to-completion per request.
-- There is no dedicated supervisor abort endpoint yet.
-- Practical stop control for now:
-  - lower `maxTasks`
-  - set `maxRetries=0`
-- Planned next upgrade: async run queue + `POST /api/supervisor/run/{run_id}/abort`.
+- Synchronous mode remains available: `POST /api/supervisor/run`.
+- Async mode: `POST /api/supervisor/run/start` returns immediately with `status=running`.
+- Stop endpoint is available: `POST /api/supervisor/run/{run_id}/abort`.
+- Poll status/result via: `GET /api/supervisor/run/{run_id}`.
 
 ### Provider Compatibility Rule
 - Primary and Worker both use OpenAI-compatible provider contracts (`/chat/completions` streaming).
@@ -206,10 +205,9 @@ git log --oneline --decorate --graph
 - Optional real provider integration (OpenAI-compatible, DeepSeek defaults).
 - Text attachment context injection pipeline.
 - Configurable web search provider (`duckduckgo` / `searxng` / `serpapi` / `tavily`).
-- Supervisor API Stage 1 (`/api/supervisor/run`, `/api/supervisor/run/{run_id}`).
+- Supervisor API Stage 2 (`/api/supervisor/run`, `/api/supervisor/run/start`, `/api/supervisor/run/{run_id}/abort`, `/api/supervisor/run/{run_id}`).
 
 ### Not Completed Yet
-- Supervisor async execution + interrupt/abort endpoint.
 - Frontend supervisor dashboard/UI (currently backend API first).
 - Durable persistence (current in-memory records, no DB persistence).
-- Mobile-first adaptation and auth/login systems (intentionally out of current scope).
+- Mobile-first adaptation and auth/login systems are intentionally out of current scope for now.
