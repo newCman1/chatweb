@@ -205,6 +205,9 @@ Async mode:
 
 Desktop UI behavior:
 - Chat page includes a `Supervisor Mode` panel (objective/plan/max tasks/max retries).
+- `Supervisor Mode` panel also supports runtime provider overrides for both roles:
+  - Primary API: key/base URL/model/reasoning model
+  - Worker API: key/base URL/model/reasoning model
 - Start action triggers async supervisor run and polling.
 - Worker and Primary outputs are projected into the same message timeline, so you can see Worker speaking in the web chat.
 

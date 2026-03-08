@@ -9,6 +9,14 @@ class SupervisorRunRequest(BaseModel):
     plan: Optional[str] = None
     max_tasks: int = Field(default=4, alias="maxTasks")
     max_retries: int = Field(default=1, alias="maxRetries")
+    primary_api_key: Optional[str] = Field(default=None, alias="primaryApiKey")
+    primary_api_base_url: Optional[str] = Field(default=None, alias="primaryApiBaseUrl")
+    primary_api_model: Optional[str] = Field(default=None, alias="primaryApiModel")
+    primary_api_reasoning_model: Optional[str] = Field(default=None, alias="primaryApiReasoningModel")
+    worker_api_key: Optional[str] = Field(default=None, alias="workerApiKey")
+    worker_api_base_url: Optional[str] = Field(default=None, alias="workerApiBaseUrl")
+    worker_api_model: Optional[str] = Field(default=None, alias="workerApiModel")
+    worker_api_reasoning_model: Optional[str] = Field(default=None, alias="workerApiReasoningModel")
 
 
 class SupervisorTaskDTO(BaseModel):

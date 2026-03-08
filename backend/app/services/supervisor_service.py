@@ -1,4 +1,5 @@
 import asyncio
+import contextvars
 import logging
 import re
 from dataclasses import asdict
@@ -52,6 +53,12 @@ class SupervisorService:
         self._abort_flags: dict[str, asyncio.Event] = {}
         self._lock = asyncio.Lock()
         self._logger = logging.getLogger("chatweb.backend.services.supervisor")
+        self._primary_runtime_options_var: contextvars.ContextVar[Optional[AIRequestOptions]] = contextvars.ContextVar(
+            "supervisor_primary_runtime_options", default=None
+        )
+        self._worker_runtime_options_var: contextvars.ContextVar[Optional[AIRequestOptions]] = contextvars.ContextVar(
+            "supervisor_worker_runtime_options", default=None
+        )
 
     async def run(self, payload: SupervisorRunRequest) -> SupervisorRunRecord:
         objective = self._validate_payload(payload)
@@ -207,72 +214,101 @@ class SupervisorService:
         payload: SupervisorRunRequest,
         abort_flag: asyncio.Event,
     ) -> None:
-        history = await chat_service.list_messages(payload.conversation_id)
-        shared_history = self._format_history(history)
+        primary_option_token = self._primary_runtime_options_var.set(self._runtime_primary_options(payload))
+        worker_option_token = self._worker_runtime_options_var.set(self._runtime_worker_options(payload))
+        try:
+            history = await chat_service.list_messages(payload.conversation_id)
+            shared_context = self._format_history(history)
 
-        plan_text = payload.plan.strip() if payload.plan and payload.plan.strip() else ""
-        if not plan_text:
-            self._raise_if_aborted(abort_flag)
-            plan_text = await self._primary_plan(row.objective, shared_history, payload.max_tasks)
-        row.plan_text = plan_text
-        await self._persist_run(row)
-
-        task_titles = self._extract_tasks(plan_text, payload.max_tasks)
-        if not task_titles:
-            task_titles = [row.objective]
-
-        row.tasks.clear()
-        for index, title in enumerate(task_titles, start=1):
-            self._raise_if_aborted(abort_flag)
-            item = SupervisorTaskRecord(
-                index=index,
-                title=title,
-                worker_output="",
-                review_verdict="PENDING",
-                review_feedback="",
-                status="running",
-                retries=0,
-            )
-            row.tasks.append(item)
+            plan_text = payload.plan.strip() if payload.plan and payload.plan.strip() else ""
+            if not plan_text:
+                self._raise_if_aborted(abort_flag)
+                plan_text = await self._primary_plan(row.objective, shared_context, payload.max_tasks)
+            row.plan_text = plan_text
             await self._persist_run(row)
 
-            worker_output = await self._worker_execute(title, row.objective, row.plan_text, shared_history)
-            self._raise_if_aborted(abort_flag)
-            verdict, feedback = await self._primary_review(title, row.objective, row.plan_text, worker_output)
+            task_titles = self._extract_tasks(plan_text, payload.max_tasks)
+            if not task_titles:
+                task_titles = [row.objective]
 
-            while verdict == "REVISE" and item.retries < payload.max_retries:
+            row.tasks.clear()
+            for index, title in enumerate(task_titles, start=1):
                 self._raise_if_aborted(abort_flag)
-                item.retries += 1
-                worker_output = await self._worker_execute(
-                    title,
-                    row.objective,
-                    row.plan_text,
-                    shared_history,
-                    review_feedback=feedback,
+                item = SupervisorTaskRecord(
+                    index=index,
+                    title=title,
+                    worker_output="",
+                    review_verdict="PENDING",
+                    review_feedback="",
+                    status="running",
+                    retries=0,
                 )
+                row.tasks.append(item)
+                await self._persist_run(row)
+
+                worker_output = await self._worker_execute(title, row.objective, row.plan_text, shared_context)
+                self._raise_if_aborted(abort_flag)
                 verdict, feedback = await self._primary_review(title, row.objective, row.plan_text, worker_output)
 
-            item.worker_output = worker_output
-            item.review_verdict = verdict
-            item.review_feedback = feedback
-            item.status = "completed" if verdict == "PASS" else "failed"
-            await self._persist_run(row)
-            log_event(
-                self._logger,
-                logging.INFO,
-                "supervisor.task.done",
-                {
-                    "run_id": row.id,
-                    "task_index": item.index,
-                    "status": item.status,
-                    "retries": item.retries,
-                },
-            )
+                while verdict == "REVISE" and item.retries < payload.max_retries:
+                    self._raise_if_aborted(abort_flag)
+                    item.retries += 1
+                    worker_output = await self._worker_execute(
+                        title,
+                        row.objective,
+                        row.plan_text,
+                        shared_context,
+                        review_feedback=feedback,
+                    )
+                    verdict, feedback = await self._primary_review(title, row.objective, row.plan_text, worker_output)
 
-        self._raise_if_aborted(abort_flag)
-        row.summary = await self._primary_summary(row.objective, row.plan_text, row.tasks)
-        row.status = "completed" if all(item.status == "completed" for item in row.tasks) else "failed"
-        await self._persist_run(row)
+                item.worker_output = worker_output
+                item.review_verdict = verdict
+                item.review_feedback = feedback
+                item.status = "completed" if verdict == "PASS" else "failed"
+                shared_context = self._append_task_exchange_to_context(
+                    shared_context=shared_context,
+                    primary_name=row.primary_name,
+                    worker_name=row.worker_name,
+                    task=item,
+                )
+                await self._persist_run(row)
+                log_event(
+                    self._logger,
+                    logging.INFO,
+                    "supervisor.task.done",
+                    {
+                        "run_id": row.id,
+                        "task_index": item.index,
+                        "status": item.status,
+                        "retries": item.retries,
+                    },
+                )
+
+            self._raise_if_aborted(abort_flag)
+            row.summary = await self._primary_summary(row.objective, row.plan_text, row.tasks)
+            row.status = "completed" if all(item.status == "completed" for item in row.tasks) else "failed"
+            await self._persist_run(row)
+        finally:
+            self._primary_runtime_options_var.reset(primary_option_token)
+            self._worker_runtime_options_var.reset(worker_option_token)
+
+    def _append_task_exchange_to_context(
+        self,
+        shared_context: str,
+        primary_name: str,
+        worker_name: str,
+        task: SupervisorTaskRecord,
+    ) -> str:
+        worker_output = task.worker_output.strip() or "(empty)"
+        review_feedback = task.review_feedback.strip() or "No feedback."
+        exchange = (
+            f"[{worker_name}] Task {task.index}: {task.title}\n{worker_output}\n"
+            f"[{primary_name}] Review Task {task.index}: {task.review_verdict}\n{review_feedback}"
+        )
+        if not shared_context or shared_context == "(empty)":
+            return exchange
+        return f"{shared_context}\n{exchange}"
 
     def _validate_payload(self, payload: SupervisorRunRequest) -> str:
         objective = payload.objective.strip()
@@ -423,20 +459,54 @@ class SupervisorService:
         return text if text else fallback
 
     def _primary_options(self) -> AIRequestOptions:
+        runtime = self._primary_runtime_options_var.get()
         return AIRequestOptions(
-            api_key=settings.supervisor_primary_api_key or None,
-            base_url=settings.supervisor_primary_base_url or None,
-            model=settings.supervisor_primary_model or None,
-            reasoning_model=settings.supervisor_primary_reasoning_model or None,
+            api_key=(runtime.api_key if runtime and runtime.api_key else settings.supervisor_primary_api_key or None),
+            base_url=(
+                runtime.base_url if runtime and runtime.base_url else settings.supervisor_primary_base_url or None
+            ),
+            model=(runtime.model if runtime and runtime.model else settings.supervisor_primary_model or None),
+            reasoning_model=(
+                runtime.reasoning_model
+                if runtime and runtime.reasoning_model
+                else settings.supervisor_primary_reasoning_model or None
+            ),
         )
 
     def _worker_options(self) -> AIRequestOptions:
+        runtime = self._worker_runtime_options_var.get()
         return AIRequestOptions(
-            api_key=settings.supervisor_worker_api_key or None,
-            base_url=settings.supervisor_worker_base_url or None,
-            model=settings.supervisor_worker_model or None,
-            reasoning_model=settings.supervisor_worker_reasoning_model or None,
+            api_key=(runtime.api_key if runtime and runtime.api_key else settings.supervisor_worker_api_key or None),
+            base_url=(runtime.base_url if runtime and runtime.base_url else settings.supervisor_worker_base_url or None),
+            model=(runtime.model if runtime and runtime.model else settings.supervisor_worker_model or None),
+            reasoning_model=(
+                runtime.reasoning_model
+                if runtime and runtime.reasoning_model
+                else settings.supervisor_worker_reasoning_model or None
+            ),
         )
+
+    def _runtime_primary_options(self, payload: SupervisorRunRequest) -> AIRequestOptions:
+        return AIRequestOptions(
+            api_key=self._clean_optional(payload.primary_api_key),
+            base_url=self._clean_optional(payload.primary_api_base_url),
+            model=self._clean_optional(payload.primary_api_model),
+            reasoning_model=self._clean_optional(payload.primary_api_reasoning_model),
+        )
+
+    def _runtime_worker_options(self, payload: SupervisorRunRequest) -> AIRequestOptions:
+        return AIRequestOptions(
+            api_key=self._clean_optional(payload.worker_api_key),
+            base_url=self._clean_optional(payload.worker_api_base_url),
+            model=self._clean_optional(payload.worker_api_model),
+            reasoning_model=self._clean_optional(payload.worker_api_reasoning_model),
+        )
+
+    def _clean_optional(self, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
 
     def _extract_tasks(self, plan_text: str, max_tasks: int) -> list[str]:
         out: list[str] = []

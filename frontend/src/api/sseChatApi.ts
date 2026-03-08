@@ -47,32 +47,36 @@ export class SseChatApi implements IChatApi {
   }
 
   async runSupervisor(input: SupervisorRunInput): Promise<SupervisorRun> {
+    const payload: Record<string, unknown> = {
+      conversationId: input.conversationId,
+      objective: input.objective,
+      plan: input.plan,
+      maxTasks: input.maxTasks ?? 4,
+      maxRetries: input.maxRetries ?? 1
+    };
+    this.applySupervisorRuntimeOptions(payload, input);
     const response = await this.requestWithRetry(`${this.baseUrl}/supervisor/run`, {
       method: "POST",
       headers,
-      body: JSON.stringify({
-        conversationId: input.conversationId,
-        objective: input.objective,
-        plan: input.plan,
-        maxTasks: input.maxTasks ?? 4,
-        maxRetries: input.maxRetries ?? 1
-      })
+      body: JSON.stringify(payload)
     });
     const data = (await response.json()) as { run: SupervisorRun };
     return data.run;
   }
 
   async startSupervisor(input: SupervisorRunInput): Promise<SupervisorRun> {
+    const payload: Record<string, unknown> = {
+      conversationId: input.conversationId,
+      objective: input.objective,
+      plan: input.plan,
+      maxTasks: input.maxTasks ?? 4,
+      maxRetries: input.maxRetries ?? 1
+    };
+    this.applySupervisorRuntimeOptions(payload, input);
     const response = await this.requestWithRetry(`${this.baseUrl}/supervisor/run/start`, {
       method: "POST",
       headers,
-      body: JSON.stringify({
-        conversationId: input.conversationId,
-        objective: input.objective,
-        plan: input.plan,
-        maxTasks: input.maxTasks ?? 4,
-        maxRetries: input.maxRetries ?? 1
-      })
+      body: JSON.stringify(payload)
     });
     const data = (await response.json()) as { run: SupervisorRun };
     return data.run;
@@ -227,6 +231,19 @@ export class SseChatApi implements IChatApi {
     a.addEventListener("abort", onAbort, { once: true });
     b.addEventListener("abort", onAbort, { once: true });
     return merged.signal;
+  }
+
+  private applySupervisorRuntimeOptions(payload: Record<string, unknown>, input: SupervisorRunInput): void {
+    if (input.primaryApiKey?.trim()) payload.primaryApiKey = input.primaryApiKey.trim();
+    if (input.primaryApiBaseUrl?.trim()) payload.primaryApiBaseUrl = input.primaryApiBaseUrl.trim();
+    if (input.primaryApiModel?.trim()) payload.primaryApiModel = input.primaryApiModel.trim();
+    if (input.primaryApiReasoningModel?.trim()) {
+      payload.primaryApiReasoningModel = input.primaryApiReasoningModel.trim();
+    }
+    if (input.workerApiKey?.trim()) payload.workerApiKey = input.workerApiKey.trim();
+    if (input.workerApiBaseUrl?.trim()) payload.workerApiBaseUrl = input.workerApiBaseUrl.trim();
+    if (input.workerApiModel?.trim()) payload.workerApiModel = input.workerApiModel.trim();
+    if (input.workerApiReasoningModel?.trim()) payload.workerApiReasoningModel = input.workerApiReasoningModel.trim();
   }
 
   private async *readBinaryStream(stream: ReadableStream<Uint8Array>): AsyncGenerator<StreamChunk> {

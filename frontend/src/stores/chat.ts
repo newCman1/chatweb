@@ -209,6 +209,14 @@ export const useChatStore = defineStore("chat", {
       plan?: string;
       maxTasks?: number;
       maxRetries?: number;
+      primaryApiKey?: string;
+      primaryApiBaseUrl?: string;
+      primaryApiModel?: string;
+      primaryApiReasoningModel?: string;
+      workerApiKey?: string;
+      workerApiBaseUrl?: string;
+      workerApiModel?: string;
+      workerApiReasoningModel?: string;
     }) {
       const objective = payload.objective.trim();
       if (!objective) {
@@ -225,7 +233,19 @@ export const useChatStore = defineStore("chat", {
       this.errorText = null;
       logger.info("supervisor.start.request", {
         conversationId,
-        objectiveLength: objective.length
+        objectiveLength: objective.length,
+        primaryOverride: Boolean(
+          payload.primaryApiKey ||
+            payload.primaryApiBaseUrl ||
+            payload.primaryApiModel ||
+            payload.primaryApiReasoningModel
+        ),
+        workerOverride: Boolean(
+          payload.workerApiKey ||
+            payload.workerApiBaseUrl ||
+            payload.workerApiModel ||
+            payload.workerApiReasoningModel
+        )
       });
 
       try {
@@ -234,7 +254,15 @@ export const useChatStore = defineStore("chat", {
           objective,
           plan: payload.plan?.trim() || undefined,
           maxTasks: payload.maxTasks ?? 4,
-          maxRetries: payload.maxRetries ?? 1
+          maxRetries: payload.maxRetries ?? 1,
+          primaryApiKey: payload.primaryApiKey,
+          primaryApiBaseUrl: payload.primaryApiBaseUrl,
+          primaryApiModel: payload.primaryApiModel,
+          primaryApiReasoningModel: payload.primaryApiReasoningModel,
+          workerApiKey: payload.workerApiKey,
+          workerApiBaseUrl: payload.workerApiBaseUrl,
+          workerApiModel: payload.workerApiModel,
+          workerApiReasoningModel: payload.workerApiReasoningModel
         });
         this.supervisorRunId = run.id;
         this.supervisorStatus = run.status;

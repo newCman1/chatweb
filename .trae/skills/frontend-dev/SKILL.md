@@ -70,6 +70,9 @@ Use this skill whenever the task modifies frontend code.
   - keep unsupported file feedback clear in UI
 - Supervisor desktop flow:
   - expose supervisor panel controls (objective/plan/max tasks/max retries)
+  - expose dual provider runtime fields on panel:
+    - Primary API: key/baseUrl/model/reasoningModel
+    - Worker API: key/baseUrl/model/reasoningModel
   - show supervisor board (current run + recent run history list)
   - board state must follow current conversation (switch conversation -> switch board context)
   - show running/completed/failed/aborted status

@@ -267,10 +267,13 @@ def test_error_code_for_validation_failure():
 
 
 def test_supervisor_run_and_get(monkeypatch):
+    worker_history_inputs = []
+
     async def fake_plan(_objective, _history, _max_tasks):
         return "1. Analyze user goal\n2. Produce implementation draft"
 
     async def fake_worker(task_title, _objective, _plan_text, _shared_history, review_feedback=None):
+        worker_history_inputs.append((task_title, _shared_history))
         suffix = f" / feedback={review_feedback}" if review_feedback else ""
         return f"worker done: {task_title}{suffix}"
 
@@ -309,6 +312,10 @@ def test_supervisor_run_and_get(monkeypatch):
     assert run["tasks"][0]["status"] == "completed"
     assert run["tasks"][1]["status"] in {"completed", "failed"}
     assert run["summary"] == "summary tasks=2"
+    assert any(
+        task_title == "Produce implementation draft" and "worker done: Analyze user goal" in history
+        for task_title, history in worker_history_inputs
+    )
 
     get_response = client.get(f"/api/supervisor/run/{run['id']}")
     assert get_response.status_code == 200
@@ -335,6 +342,50 @@ def test_supervisor_run_validation_error():
     assert response.status_code == 400
     payload = response.json()["error"]
     assert payload["code"] == "SUPERVISOR_INVALID_MAX_TASKS"
+
+
+def test_supervisor_runtime_provider_overrides(monkeypatch):
+    captured_options = []
+
+    async def fake_run_model(_messages, options, fallback):
+        _ = fallback
+        captured_options.append(options)
+        system_prompt = _messages[0]["content"]
+        if "numbered task list" in system_prompt:
+            return "1. Runtime option task"
+        if "strict supervisor reviewer" in system_prompt:
+            return "VERDICT: PASS\nFEEDBACK: OK"
+        if "Summarize final execution status" in system_prompt:
+            return "summary done"
+        return "worker output"
+
+    monkeypatch.setattr(supervisor_service_module.supervisor_service, "_run_model", fake_run_model)
+
+    create = client.post("/api/conversations")
+    assert create.status_code == 200
+    conversation_id = create.json()["conversation"]["id"]
+
+    response = client.post(
+        "/api/supervisor/run",
+        json={
+            "conversationId": conversation_id,
+            "objective": "Verify runtime override",
+            "maxTasks": 1,
+            "maxRetries": 0,
+            "primaryApiKey": "sk-primary",
+            "primaryApiBaseUrl": "https://primary.example/v1",
+            "primaryApiModel": "primary-model",
+            "primaryApiReasoningModel": "primary-reasoning",
+            "workerApiKey": "sk-worker",
+            "workerApiBaseUrl": "https://worker.example/v1",
+            "workerApiModel": "worker-model",
+            "workerApiReasoningModel": "worker-reasoning",
+        },
+    )
+    assert response.status_code == 200
+
+    assert any(item.api_key == "sk-primary" and item.model == "primary-model" for item in captured_options)
+    assert any(item.api_key == "sk-worker" and item.model == "worker-model" for item in captured_options)
 
 
 def test_supervisor_start_and_abort(monkeypatch):

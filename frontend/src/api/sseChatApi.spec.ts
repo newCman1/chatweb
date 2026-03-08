@@ -259,7 +259,18 @@ describe("SseChatApi", () => {
       streamFormat: "json"
     });
 
-    const started = await api.startSupervisor({ conversationId: "c1", objective: "obj" });
+    const started = await api.startSupervisor({
+      conversationId: "c1",
+      objective: "obj",
+      primaryApiKey: "sk-primary",
+      primaryApiBaseUrl: "https://primary.example/v1",
+      primaryApiModel: "primary-model",
+      primaryApiReasoningModel: "primary-reasoning",
+      workerApiKey: "sk-worker",
+      workerApiBaseUrl: "https://worker.example/v1",
+      workerApiModel: "worker-model",
+      workerApiReasoningModel: "worker-reasoning"
+    });
     expect(started.status).toBe("running");
     const current = await api.getSupervisor("r1");
     expect(current.status).toBe("completed");
@@ -267,6 +278,9 @@ describe("SseChatApi", () => {
     expect(aborted.status).toBe("aborted");
 
     expect((fetchMock.mock.calls[0][0] as string).endsWith("/supervisor/run/start")).toBe(true);
+    const startBody = JSON.parse(fetchMock.mock.calls[0][1].body as string) as Record<string, unknown>;
+    expect(startBody.primaryApiModel).toBe("primary-model");
+    expect(startBody.workerApiModel).toBe("worker-model");
     expect((fetchMock.mock.calls[1][0] as string).endsWith("/supervisor/run/r1")).toBe(true);
     expect((fetchMock.mock.calls[2][0] as string).endsWith("/supervisor/run/r1/abort")).toBe(true);
   });

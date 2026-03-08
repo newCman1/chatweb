@@ -170,6 +170,7 @@ Acceptance:
 16. Done: Add desktop supervisor panel and poll loop, showing worker/primary outputs inside message timeline.
 17. Done: Add SQLite durable persistence for conversations/messages/supervisor runs/tasks (survives restart).
 18. Done: Add supervisor run history endpoint (`GET /api/supervisor/runs`) and desktop board (`SupervisorBoard`) with current run + recent runs.
+19. Done: Add supervisor runtime provider overrides from desktop panel for both Primary and Worker (`api key/base URL/model/reasoning model`).
 
 ## 9. Change History
 Use Git history for all detailed corrections and timeline:

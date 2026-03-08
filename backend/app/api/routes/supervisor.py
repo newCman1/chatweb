@@ -23,6 +23,18 @@ async def run_supervisor(payload: SupervisorRunRequest) -> SupervisorRunResponse
             "objective_length": len(payload.objective.strip()),
             "max_tasks": payload.max_tasks,
             "max_retries": payload.max_retries,
+            "primary_runtime_override": bool(
+                payload.primary_api_key
+                or payload.primary_api_base_url
+                or payload.primary_api_model
+                or payload.primary_api_reasoning_model
+            ),
+            "worker_runtime_override": bool(
+                payload.worker_api_key
+                or payload.worker_api_base_url
+                or payload.worker_api_model
+                or payload.worker_api_reasoning_model
+            ),
         },
     )
     run = await supervisor_service.run(payload)
@@ -41,6 +53,18 @@ async def start_supervisor(payload: SupervisorRunRequest) -> SupervisorRunRespon
             "objective_length": len(payload.objective.strip()),
             "max_tasks": payload.max_tasks,
             "max_retries": payload.max_retries,
+            "primary_runtime_override": bool(
+                payload.primary_api_key
+                or payload.primary_api_base_url
+                or payload.primary_api_model
+                or payload.primary_api_reasoning_model
+            ),
+            "worker_runtime_override": bool(
+                payload.worker_api_key
+                or payload.worker_api_base_url
+                or payload.worker_api_model
+                or payload.worker_api_reasoning_model
+            ),
         },
     )
     run = await supervisor_service.start(payload)

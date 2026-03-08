@@ -13,6 +13,7 @@ const delay = (ms: number) =>
 
 class StreamingApiStub implements IChatApi {
   lastInput: StreamReplyInput | null = null;
+  lastSupervisorInput: SupervisorRunInput | null = null;
 
   async listConversations() {
     return [];
@@ -66,6 +67,7 @@ class StreamingApiStub implements IChatApi {
   }
 
   async startSupervisor(input: SupervisorRunInput): Promise<SupervisorRun> {
+    this.lastSupervisorInput = input;
     const now = new Date().toISOString();
     return {
       id: "run-async",
@@ -270,6 +272,25 @@ describe("chat store", () => {
     const assistantMessages = conversationStore.currentMessages.filter((item) => item.role === "assistant");
     expect(assistantMessages.some((item) => item.content.includes("[Worker AI]"))).toBe(true);
     expect(assistantMessages.some((item) => item.content.includes("[Primary AI]"))).toBe(true);
+  });
+
+  it("passes supervisor runtime api options to adapter", async () => {
+    const conversationStore = useConversationStore();
+    await conversationStore.createConversation();
+    const chatStore = useChatStore();
+    await chatStore.startSupervisor({
+      objective: "ship feature",
+      primaryApiKey: "sk-primary",
+      primaryApiBaseUrl: "https://primary.example/v1",
+      primaryApiModel: "primary-model",
+      primaryApiReasoningModel: "primary-reasoning",
+      workerApiKey: "sk-worker",
+      workerApiBaseUrl: "https://worker.example/v1",
+      workerApiModel: "worker-model",
+      workerApiReasoningModel: "worker-reasoning"
+    });
+    expect(apiStub.lastSupervisorInput?.primaryApiModel).toBe("primary-model");
+    expect(apiStub.lastSupervisorInput?.workerApiModel).toBe("worker-model");
   });
 
   it("loads supervisor run history for conversation", async () => {

@@ -86,6 +86,10 @@ Use this skill whenever the task modifies backend code.
     - `POST /api/supervisor/run/{run_id}/abort` (interrupt)
     - `GET /api/supervisor/run/{run_id}` (poll)
     - `GET /api/supervisor/runs?conversationId=...` (conversation history list)
+  - supervisor start/run payload should accept optional runtime overrides for both roles:
+    - primary: `primaryApiKey/primaryApiBaseUrl/primaryApiModel/primaryApiReasoningModel`
+    - worker: `workerApiKey/workerApiBaseUrl/workerApiModel/workerApiReasoningModel`
+  - runtime overrides take precedence over backend env defaults when provided
   - primary AI is responsible for plan/review/summary
   - worker AI is responsible for task execution
   - both must consume shared conversation history context

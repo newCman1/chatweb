@@ -25,6 +25,14 @@ export interface SupervisorRunInput {
   plan?: string;
   maxTasks?: number;
   maxRetries?: number;
+  primaryApiKey?: string;
+  primaryApiBaseUrl?: string;
+  primaryApiModel?: string;
+  primaryApiReasoningModel?: string;
+  workerApiKey?: string;
+  workerApiBaseUrl?: string;
+  workerApiModel?: string;
+  workerApiReasoningModel?: string;
 }
 
 export interface IChatApi {
