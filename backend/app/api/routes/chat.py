@@ -15,6 +15,7 @@ from app.schemas.chat import (
     SimpleResponse,
 )
 from app.services.chat_service import chat_service
+from app.services.chat_service import StreamRuntimeOptions
 
 
 router = APIRouter()
@@ -88,9 +89,22 @@ async def stream_chat(payload: SendMessageRequest) -> StreamingResponse:
         {
             "conversation_id": payload.conversation_id,
             "enable_thinking": payload.enable_thinking,
+            "enable_web_search": payload.enable_web_search,
             "stream_format": payload.stream_format,
             "content_length": len(content),
+            "api_key_provided": bool(payload.api_key and payload.api_key.strip()),
         },
+    )
+    runtime_options = StreamRuntimeOptions(
+        enable_web_search=payload.enable_web_search,
+        api_key=payload.api_key.strip() if payload.api_key and payload.api_key.strip() else None,
+        api_base_url=payload.api_base_url.strip() if payload.api_base_url and payload.api_base_url.strip() else None,
+        api_model=payload.api_model.strip() if payload.api_model and payload.api_model.strip() else None,
+        api_reasoning_model=(
+            payload.api_reasoning_model.strip()
+            if payload.api_reasoning_model and payload.api_reasoning_model.strip()
+            else None
+        ),
     )
     await chat_service.append_user_message(payload.conversation_id, content)
     if payload.stream_format == "binary":
@@ -99,7 +113,12 @@ async def stream_chat(payload: SendMessageRequest) -> StreamingResponse:
             media_type="application/octet-stream",
         )
     return StreamingResponse(
-        chat_service.stream_json(payload.conversation_id, content, payload.enable_thinking),
+        chat_service.stream_json(
+            payload.conversation_id,
+            content,
+            payload.enable_thinking,
+            runtime_options=runtime_options,
+        ),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
     )

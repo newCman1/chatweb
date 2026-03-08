@@ -11,16 +11,46 @@ interface ChatState {
   activeAbortController: AbortController | null;
   errorText: string | null;
   enableDeepThinking: boolean;
+  enableWebSearch: boolean;
+  userApiKey: string;
+  userApiBaseUrl: string;
+  userApiModel: string;
+  userApiReasoningModel: string;
   thinkingExpandedByMessageId: Record<string, boolean>;
 }
 
 const uid = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
 const DEEP_THINKING_PREF_KEY = "chatweb.enableDeepThinking";
+const WEB_SEARCH_PREF_KEY = "chatweb.enableWebSearch";
+const USER_API_KEY = "chatweb.userApiKey";
+const USER_API_BASE_URL = "chatweb.userApiBaseUrl";
+const USER_API_MODEL = "chatweb.userApiModel";
+const USER_API_REASONING_MODEL = "chatweb.userApiReasoningModel";
 
 function loadDeepThinkingPreference(): boolean {
   if (typeof window === "undefined") return false;
   return window.localStorage.getItem(DEEP_THINKING_PREF_KEY) === "1";
+}
+
+function loadWebSearchPreference(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.localStorage.getItem(WEB_SEARCH_PREF_KEY) === "1";
+}
+
+function loadTextPreference(key: string, fallback = ""): string {
+  if (typeof window === "undefined") return fallback;
+  return window.localStorage.getItem(key) ?? fallback;
+}
+
+function saveTextPreference(key: string, value: string): void {
+  if (typeof window === "undefined") return;
+  const trimmed = value.trim();
+  if (!trimmed) {
+    window.localStorage.removeItem(key);
+    return;
+  }
+  window.localStorage.setItem(key, trimmed);
 }
 
 export const useChatStore = defineStore("chat", {
@@ -31,6 +61,11 @@ export const useChatStore = defineStore("chat", {
     activeAbortController: null,
     errorText: null,
     enableDeepThinking: loadDeepThinkingPreference(),
+    enableWebSearch: loadWebSearchPreference(),
+    userApiKey: loadTextPreference(USER_API_KEY),
+    userApiBaseUrl: loadTextPreference(USER_API_BASE_URL),
+    userApiModel: loadTextPreference(USER_API_MODEL),
+    userApiReasoningModel: loadTextPreference(USER_API_REASONING_MODEL),
     thinkingExpandedByMessageId: {}
   }),
   actions: {
@@ -47,7 +82,12 @@ export const useChatStore = defineStore("chat", {
       if (!conversationId) return;
 
       this.errorText = null;
-      logger.info("chat.send", { conversationId, contentLength: trimmed.length });
+      logger.info("chat.send", {
+        conversationId,
+        contentLength: trimmed.length,
+        enableWebSearch: this.enableWebSearch,
+        apiKeyProvided: Boolean(this.userApiKey.trim())
+      });
       const userMessage: Message = {
         id: uid(),
         conversationId,
@@ -81,6 +121,11 @@ export const useChatStore = defineStore("chat", {
           conversationId,
           messages: conversationStore.messagesByConversation[conversationId],
           enableThinking: this.enableDeepThinking,
+          enableWebSearch: this.enableWebSearch,
+          apiKey: this.userApiKey || undefined,
+          apiBaseUrl: this.userApiBaseUrl || undefined,
+          apiModel: this.userApiModel || undefined,
+          apiReasoningModel: this.userApiReasoningModel || undefined,
           signal: this.activeAbortController.signal
         });
         for await (const chunk of stream) {
@@ -119,6 +164,8 @@ export const useChatStore = defineStore("chat", {
           logger.error("chat.stream.error", {
             conversationId,
             assistantMessageId,
+            enableWebSearch: this.enableWebSearch,
+            apiKeyProvided: Boolean(this.userApiKey.trim()),
             error: err instanceof Error ? err.message : "unknown"
           });
         } else {
@@ -142,6 +189,28 @@ export const useChatStore = defineStore("chat", {
       if (typeof window !== "undefined") {
         window.localStorage.setItem(DEEP_THINKING_PREF_KEY, enable ? "1" : "0");
       }
+    },
+    setEnableWebSearch(enable: boolean) {
+      this.enableWebSearch = enable;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(WEB_SEARCH_PREF_KEY, enable ? "1" : "0");
+      }
+    },
+    setUserApiKey(value: string) {
+      this.userApiKey = value;
+      saveTextPreference(USER_API_KEY, value);
+    },
+    setUserApiBaseUrl(value: string) {
+      this.userApiBaseUrl = value;
+      saveTextPreference(USER_API_BASE_URL, value);
+    },
+    setUserApiModel(value: string) {
+      this.userApiModel = value;
+      saveTextPreference(USER_API_MODEL, value);
+    },
+    setUserApiReasoningModel(value: string) {
+      this.userApiReasoningModel = value;
+      saveTextPreference(USER_API_REASONING_MODEL, value);
     },
     isThinkingExpanded(messageId: string): boolean {
       return this.thinkingExpandedByMessageId[messageId] === true;

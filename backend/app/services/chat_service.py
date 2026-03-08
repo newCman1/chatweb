@@ -2,7 +2,8 @@ import asyncio
 import json
 import logging
 from collections import defaultdict
-from typing import AsyncGenerator
+from dataclasses import dataclass
+from typing import AsyncGenerator, Optional
 from uuid import uuid4
 
 import httpx
@@ -11,7 +12,8 @@ from app.core.config import settings
 from app.core.errors import AppError
 from app.core.logging import log_event
 from app.models.chat import ConversationRecord, MessageRecord, utc_now_iso
-from app.services.ai_client import ai_client
+from app.services.ai_client import AIRequestOptions, ai_client
+from app.services.web_search import search_web_context
 
 
 def build_assistant_reply(user_text: str) -> str:
@@ -146,8 +148,13 @@ class ChatService:
             log_event(self._logger, logging.INFO, "stream.abort.no_active_stream", {"conversation_id": conversation_id})
 
     async def stream_json(
-        self, conversation_id: str, user_content: str, enable_thinking: bool
+        self,
+        conversation_id: str,
+        user_content: str,
+        enable_thinking: bool,
+        runtime_options: Optional["StreamRuntimeOptions"] = None,
     ) -> AsyncGenerator[str, None]:
+        options = runtime_options or StreamRuntimeOptions()
         abort_flag = asyncio.Event()
         self._active_abort_flags[conversation_id] = abort_flag
         assistant = await self.create_assistant_message_placeholder(conversation_id)
@@ -159,12 +166,13 @@ class ChatService:
                 "conversation_id": conversation_id,
                 "message_id": assistant.id,
                 "enable_thinking": enable_thinking,
+                "enable_web_search": options.enable_web_search,
             },
         )
 
         try:
             async for event_type, delta in self._stream_with_provider_fallback(
-                conversation_id, user_content, enable_thinking
+                conversation_id, user_content, enable_thinking, options
             ):
                 if abort_flag.is_set():
                     await self._mark_stopped(conversation_id, assistant.id)
@@ -274,12 +282,28 @@ class ChatService:
             self._active_abort_flags.pop(conversation_id, None)
 
     async def _stream_with_provider_fallback(
-        self, conversation_id: str, user_content: str, enable_thinking: bool
+        self,
+        conversation_id: str,
+        user_content: str,
+        enable_thinking: bool,
+        runtime_options: "StreamRuntimeOptions",
     ) -> AsyncGenerator[tuple[str, str], None]:
-        if ai_client.enabled:
-            history = await self._build_provider_messages(conversation_id)
+        ai_options = AIRequestOptions(
+            api_key=runtime_options.api_key,
+            base_url=runtime_options.api_base_url,
+            model=runtime_options.api_model,
+            reasoning_model=runtime_options.api_reasoning_model,
+        )
+        if ai_client.is_enabled(ai_options):
+            history = await self._build_provider_messages(
+                conversation_id,
+                user_content=user_content,
+                enable_web_search=runtime_options.enable_web_search,
+            )
             try:
-                async for event_type, delta in ai_client.stream_chat(history, enable_thinking=enable_thinking):
+                async for event_type, delta in ai_client.stream_chat(
+                    history, enable_thinking=enable_thinking, options=ai_options
+                ):
                     if event_type == "thinking" and not enable_thinking:
                         continue
                     yield (event_type, delta)
@@ -289,7 +313,11 @@ class ChatService:
                     self._logger,
                     logging.ERROR,
                     "stream.provider.failed",
-                    {"conversation_id": conversation_id, "error": str(error)},
+                    {
+                        "conversation_id": conversation_id,
+                        "error": str(error),
+                        "enable_web_search": runtime_options.enable_web_search,
+                    },
                 )
                 if not settings.ai_fallback_on_error:
                     raise AppError(
@@ -314,18 +342,41 @@ class ChatService:
             yield ("answer", token + " ")
             await asyncio.sleep(settings.token_delay_seconds)
 
-    async def _build_provider_messages(self, conversation_id: str) -> list[dict[str, str]]:
+    async def _build_provider_messages(
+        self, conversation_id: str, user_content: str, enable_web_search: bool
+    ) -> list[dict[str, str]]:
         async with self._lock:
             history = list(self._messages.get(conversation_id, []))
         provider_messages: list[dict[str, str]] = [
             {"role": "system", "content": "You are a concise and practical assistant."}
         ]
+        if enable_web_search:
+            context = await self._build_web_search_context(user_content)
+            if context:
+                provider_messages.append(
+                    {
+                        "role": "system",
+                        "content": (
+                            "Web search snippets for this question (may be incomplete/outdated):\n"
+                            f"{context}\n"
+                            "Use them as references and mention uncertainty when needed."
+                        ),
+                    }
+                )
         for item in history:
             if item.role not in {"user", "assistant"}:
                 continue
             if item.content.strip():
                 provider_messages.append({"role": item.role, "content": item.content})
         return provider_messages
+
+    async def _build_web_search_context(self, query: str) -> str:
+        context = await search_web_context(query)
+        if context:
+            log_event(self._logger, logging.INFO, "stream.web_search.context_ready")
+        else:
+            log_event(self._logger, logging.INFO, "stream.web_search.no_result")
+        return context
 
     async def _append_assistant_text(self, conversation_id: str, message_id: str, delta: str) -> None:
         async with self._lock:
@@ -368,3 +419,12 @@ class ChatService:
 
 
 chat_service = ChatService()
+
+
+@dataclass(frozen=True)
+class StreamRuntimeOptions:
+    enable_web_search: bool = False
+    api_key: Optional[str] = None
+    api_base_url: Optional[str] = None
+    api_model: Optional[str] = None
+    api_reasoning_model: Optional[str] = None

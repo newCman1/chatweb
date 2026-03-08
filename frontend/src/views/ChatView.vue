@@ -69,9 +69,19 @@ onMounted(async () => {
         :disabled="!conversationStore.currentConversationId"
         :is-streaming="chatStore.isStreaming"
         :enable-deep-thinking="chatStore.enableDeepThinking"
+        :enable-web-search="chatStore.enableWebSearch"
+        :user-api-key="chatStore.userApiKey"
+        :user-api-base-url="chatStore.userApiBaseUrl"
+        :user-api-model="chatStore.userApiModel"
+        :user-api-reasoning-model="chatStore.userApiReasoningModel"
         @send="onSend"
         @stop="chatStore.stop"
         @update:enable-deep-thinking="chatStore.setEnableDeepThinking"
+        @update:enable-web-search="chatStore.setEnableWebSearch"
+        @update:user-api-key="chatStore.setUserApiKey"
+        @update:user-api-base-url="chatStore.setUserApiBaseUrl"
+        @update:user-api-model="chatStore.setUserApiModel"
+        @update:user-api-reasoning-model="chatStore.setUserApiReasoningModel"
       />
     </section>
   </main>

@@ -74,7 +74,7 @@ def test_stream_without_thinking():
 
 
 def test_stream_fallback_when_provider_fails(monkeypatch):
-    async def failing_stream(_messages, enable_thinking=False):
+    async def failing_stream(_messages, enable_thinking=False, options=None):
         raise httpx.HTTPError("provider down")
         yield ("answer", "")
 
@@ -102,7 +102,7 @@ def test_stream_fallback_when_provider_fails(monkeypatch):
 def test_stream_provider_receives_enable_thinking(monkeypatch):
     captured = {"enable_thinking": None}
 
-    async def fake_stream(_messages, enable_thinking=False):
+    async def fake_stream(_messages, enable_thinking=False, options=None):
         captured["enable_thinking"] = enable_thinking
         if enable_thinking:
             yield ("thinking", "reasoning ")
@@ -128,6 +128,52 @@ def test_stream_provider_receives_enable_thinking(monkeypatch):
     assert captured["enable_thinking"] is True
     assert "event: thinking" in stream_response.text
     assert "event: chunk" in stream_response.text
+
+
+def test_stream_runtime_options_and_web_search(monkeypatch):
+    captured = {"options": None, "messages": []}
+
+    async def fake_search(_query):
+        return "- Example snippet (https://example.com)"
+
+    def fake_is_enabled(_options=None):
+        return True
+
+    async def fake_stream(messages, enable_thinking=False, options=None):
+        captured["messages"] = messages
+        captured["options"] = options
+        yield ("answer", "ok ")
+
+    monkeypatch.setattr(chat_service_module.chat_service, "_build_web_search_context", fake_search)
+    monkeypatch.setattr(chat_service_module.ai_client, "is_enabled", fake_is_enabled)
+    monkeypatch.setattr(chat_service_module.ai_client, "stream_chat", fake_stream)
+
+    create = client.post("/api/conversations")
+    assert create.status_code == 200
+    conversation_id = create.json()["conversation"]["id"]
+
+    stream_response = client.post(
+        "/api/chat/stream",
+        json={
+            "conversationId": conversation_id,
+            "content": "search this",
+            "enableThinking": False,
+            "enableWebSearch": True,
+            "apiKey": "sk-override",
+            "apiBaseUrl": "https://api.deepseek.com/v1",
+            "apiModel": "deepseek-chat",
+            "apiReasoningModel": "deepseek-reasoner",
+            "streamFormat": "json",
+        },
+    )
+    assert stream_response.status_code == 200
+    assert "event: chunk" in stream_response.text
+    assert captured["options"] is not None
+    assert captured["options"].api_key == "sk-override"
+    assert captured["options"].base_url == "https://api.deepseek.com/v1"
+    assert captured["options"].model == "deepseek-chat"
+    assert captured["options"].reasoning_model == "deepseek-reasoner"
+    assert any("Web search snippets" in message["content"] for message in captured["messages"])
 
 
 def test_error_code_for_empty_stream_content():

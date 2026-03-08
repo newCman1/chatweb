@@ -39,6 +39,9 @@ Use this skill whenever the task modifies backend code.
   - `event: done`, `data: {"done":true}` (or `{"stopped":true}`)
 - `POST /api/chat/stream` request must support:
   - `enableThinking: true|false` (user-controlled deep thinking switch)
+  - `enableWebSearch: true|false` (optional web context enrichment)
+  - optional runtime provider overrides:
+    - `apiKey`, `apiBaseUrl`, `apiModel`, `apiReasoningModel`
 - Optional real model provider is configured by:
   - `CHATWEB_AI_API_KEY`, `CHATWEB_AI_BASE_URL`
   - `CHATWEB_AI_MODEL` (normal chat model)
@@ -47,6 +50,7 @@ Use this skill whenever the task modifies backend code.
   - `CHATWEB_AI_SEND_REASONING_EFFORT` (default `false` for DeepSeek)
   - fallback to local mock stream when API key is empty
   - `CHATWEB_AI_FALLBACK_ON_ERROR` controls fallback when provider call fails
+  - runtime request options should override env config when provided by frontend
 
 ## Delivery Rules
 

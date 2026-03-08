@@ -1,19 +1,41 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 
-const props = defineProps<{
-  disabled?: boolean;
-  isStreaming: boolean;
-  enableDeepThinking: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    disabled?: boolean;
+    isStreaming: boolean;
+    enableDeepThinking: boolean;
+    enableWebSearch?: boolean;
+    userApiKey?: string;
+    userApiBaseUrl?: string;
+    userApiModel?: string;
+    userApiReasoningModel?: string;
+  }>(),
+  {
+    disabled: false,
+    enableWebSearch: false,
+    userApiKey: "",
+    userApiBaseUrl: "",
+    userApiModel: "",
+    userApiReasoningModel: ""
+  }
+);
 
 const emit = defineEmits<{
   send: [content: string];
   stop: [];
   "update:enableDeepThinking": [value: boolean];
+  "update:enableWebSearch": [value: boolean];
+  "update:userApiKey": [value: string];
+  "update:userApiBaseUrl": [value: string];
+  "update:userApiModel": [value: string];
+  "update:userApiReasoningModel": [value: string];
 }>();
 
 const draft = ref("");
+const settingsOpen = ref(false);
+const revealApiKey = ref(false);
 
 const canSend = computed(() => !props.disabled && !props.isStreaming && draft.value.trim().length > 0);
 const actionLabel = computed(() => (props.isStreaming ? "Stop" : "Send"));
@@ -44,6 +66,11 @@ function onToggleDeepThinking(event: Event) {
   const target = event.target as HTMLInputElement;
   emit("update:enableDeepThinking", target.checked);
 }
+
+function onToggleWebSearch(event: Event) {
+  const target = event.target as HTMLInputElement;
+  emit("update:enableWebSearch", target.checked);
+}
 </script>
 
 <template>
@@ -58,10 +85,29 @@ function onToggleDeepThinking(event: Event) {
         @keydown="onKeydown"
       />
       <div class="chat-input-toolbar">
-        <label class="thinking-toggle">
-          <input type="checkbox" :checked="enableDeepThinking" @change="onToggleDeepThinking" />
-          <span class="toggle-text">Deep thinking</span>
-        </label>
+        <div class="left-tools">
+          <label class="thinking-toggle">
+            <input
+              data-testid="deep-thinking-toggle"
+              type="checkbox"
+              :checked="enableDeepThinking"
+              @change="onToggleDeepThinking"
+            />
+            <span class="toggle-text">Deep thinking</span>
+          </label>
+          <label class="thinking-toggle">
+            <input
+              data-testid="web-search-toggle"
+              type="checkbox"
+              :checked="enableWebSearch"
+              @change="onToggleWebSearch"
+            />
+            <span class="toggle-text">Web search</span>
+          </label>
+          <button class="settings-btn" type="button" @click="settingsOpen = !settingsOpen">
+            {{ settingsOpen ? "Hide API" : "API Settings" }}
+          </button>
+        </div>
 
         <div class="input-actions">
           <span class="input-hint"><kbd>Enter</kbd> send, <kbd>Shift</kbd>+<kbd>Enter</kbd> newline</span>
@@ -73,6 +119,54 @@ function onToggleDeepThinking(event: Event) {
           >
             {{ actionLabel }}
           </button>
+        </div>
+      </div>
+
+      <div v-if="settingsOpen" class="api-settings">
+        <div class="api-row">
+          <label for="chatweb-api-key">API Key</label>
+          <div class="api-key-input">
+            <input
+              id="chatweb-api-key"
+              data-testid="api-key-input"
+              :type="revealApiKey ? 'text' : 'password'"
+              :value="userApiKey"
+              placeholder="sk-..."
+              @input="emit('update:userApiKey', ($event.target as HTMLInputElement).value)"
+            />
+            <button type="button" class="secondary-btn" @click="revealApiKey = !revealApiKey">
+              {{ revealApiKey ? "Hide" : "Show" }}
+            </button>
+          </div>
+        </div>
+        <div class="api-row">
+          <label for="chatweb-api-base-url">Base URL</label>
+          <input
+            id="chatweb-api-base-url"
+            :value="userApiBaseUrl"
+            placeholder="https://api.deepseek.com/v1"
+            @input="emit('update:userApiBaseUrl', ($event.target as HTMLInputElement).value)"
+          />
+        </div>
+        <div class="api-grid">
+          <div class="api-row">
+            <label for="chatweb-api-model">Model</label>
+            <input
+              id="chatweb-api-model"
+              :value="userApiModel"
+              placeholder="deepseek-chat"
+              @input="emit('update:userApiModel', ($event.target as HTMLInputElement).value)"
+            />
+          </div>
+          <div class="api-row">
+            <label for="chatweb-api-reasoning-model">Reasoning Model</label>
+            <input
+              id="chatweb-api-reasoning-model"
+              :value="userApiReasoningModel"
+              placeholder="deepseek-reasoner"
+              @input="emit('update:userApiReasoningModel', ($event.target as HTMLInputElement).value)"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -127,6 +221,12 @@ function onToggleDeepThinking(event: Event) {
   gap: 10px;
 }
 
+.left-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .thinking-toggle {
   display: inline-flex;
   align-items: center;
@@ -138,6 +238,23 @@ function onToggleDeepThinking(event: Event) {
 
 .thinking-toggle input {
   margin: 0;
+}
+
+.settings-btn,
+.secondary-btn {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text-secondary);
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.settings-btn:hover,
+.secondary-btn:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
 }
 
 .input-actions {
@@ -189,5 +306,46 @@ function onToggleDeepThinking(event: Event) {
 .primary-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.api-settings {
+  border-top: 1px solid var(--border-light);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #fafcff;
+}
+
+.api-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.api-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.api-row label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.api-row input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: var(--font-main);
+}
+
+.api-key-input {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
 }
 </style>

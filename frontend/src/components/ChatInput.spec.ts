@@ -45,9 +45,24 @@ describe("ChatInput", () => {
       }
     });
 
-    const checkbox = wrapper.find('input[type="checkbox"]');
+    const checkbox = wrapper.find('[data-testid="deep-thinking-toggle"]');
     await checkbox.setValue(true);
     expect(wrapper.emitted("update:enableDeepThinking")?.[0]).toEqual([true]);
+  });
+
+  it("emits web search toggle update", async () => {
+    const wrapper = mount(ChatInput, {
+      props: {
+        isStreaming: false,
+        disabled: false,
+        enableDeepThinking: false,
+        enableWebSearch: false
+      }
+    });
+
+    const checkbox = wrapper.find('[data-testid="web-search-toggle"]');
+    await checkbox.setValue(true);
+    expect(wrapper.emitted("update:enableWebSearch")?.[0]).toEqual([true]);
   });
 
   it("emits stop when primary button clicked in streaming mode", async () => {
@@ -62,5 +77,22 @@ describe("ChatInput", () => {
     const button = wrapper.find("button.primary-btn");
     await button.trigger("click");
     expect(wrapper.emitted("stop")).toHaveLength(1);
+  });
+
+  it("emits user api key update in api settings", async () => {
+    const wrapper = mount(ChatInput, {
+      props: {
+        isStreaming: false,
+        disabled: false,
+        enableDeepThinking: false,
+        userApiKey: ""
+      }
+    });
+
+    const toggle = wrapper.find("button.settings-btn");
+    await toggle.trigger("click");
+    const keyInput = wrapper.find('[data-testid="api-key-input"]');
+    await keyInput.setValue("sk-demo");
+    expect(wrapper.emitted("update:userApiKey")?.[0]).toEqual(["sk-demo"]);
   });
 });

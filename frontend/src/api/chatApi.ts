@@ -4,6 +4,11 @@ export interface StreamReplyInput {
   conversationId: string;
   messages: Message[];
   enableThinking?: boolean;
+  enableWebSearch?: boolean;
+  apiKey?: string;
+  apiBaseUrl?: string;
+  apiModel?: string;
+  apiReasoningModel?: string;
   signal?: AbortSignal;
 }
 

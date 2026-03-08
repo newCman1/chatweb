@@ -81,9 +81,19 @@ Request example:
   "conversationId": "xxx",
   "content": "hello",
   "enableThinking": true,
+  "enableWebSearch": false,
+  "apiKey": "optional-user-key",
+  "apiBaseUrl": "https://api.deepseek.com/v1",
+  "apiModel": "deepseek-chat",
+  "apiReasoningModel": "deepseek-reasoner",
   "streamFormat": "json"
 }
 ```
+
+Notes:
+- `apiKey/apiBaseUrl/apiModel/apiReasoningModel` are optional runtime overrides from frontend UI.
+- When runtime overrides are empty, backend uses server-side `CHATWEB_AI_*` env settings.
+- `enableWebSearch=true` triggers a lightweight web snippet fetch before provider call.
 
 ## AI Provider Config (Optional)
 

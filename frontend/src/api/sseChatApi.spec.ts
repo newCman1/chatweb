@@ -43,8 +43,12 @@ describe("SseChatApi", () => {
       if (chunk.delta) out.push(chunk.delta);
     }
     expect(out.join("")).toBe("hello world");
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string) as { enableThinking?: boolean };
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string) as {
+      enableThinking?: boolean;
+      enableWebSearch?: boolean;
+    };
     expect(body.enableThinking).toBe(true);
+    expect(body.enableWebSearch).toBe(false);
   });
 
   it("parses thinking events from sse stream", async () => {
@@ -143,5 +147,45 @@ describe("SseChatApi", () => {
       for await (const _ of api.streamReply({ conversationId: "c1", messages })) {
       }
     }).rejects.toThrow("AI_PROVIDER_ERROR: provider failed");
+  });
+
+  it("sends runtime api options in stream payload", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      body: textStream('event: done\ndata: {"done":true}\n\n')
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const api = new SseChatApi({
+      baseUrl: "http://127.0.0.1:8000/api",
+      streamFormat: "json"
+    });
+    const messages: Message[] = [
+      {
+        id: "u1",
+        conversationId: "c1",
+        role: "user",
+        content: "hello",
+        status: "done",
+        createdAt: new Date().toISOString()
+      }
+    ];
+
+    for await (const _ of api.streamReply({
+      conversationId: "c1",
+      messages,
+      enableWebSearch: true,
+      apiKey: "sk-123",
+      apiBaseUrl: "https://api.deepseek.com/v1",
+      apiModel: "deepseek-chat",
+      apiReasoningModel: "deepseek-reasoner"
+    })) {
+    }
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string) as Record<string, string | boolean>;
+    expect(body.enableWebSearch).toBe(true);
+    expect(body.apiKey).toBe("sk-123");
+    expect(body.apiBaseUrl).toBe("https://api.deepseek.com/v1");
+    expect(body.apiModel).toBe("deepseek-chat");
+    expect(body.apiReasoningModel).toBe("deepseek-reasoner");
   });
 });

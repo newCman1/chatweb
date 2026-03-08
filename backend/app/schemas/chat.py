@@ -42,6 +42,11 @@ class SendMessageRequest(BaseModel):
     conversation_id: str = Field(alias="conversationId")
     content: str
     enable_thinking: bool = Field(default=False, alias="enableThinking")
+    enable_web_search: bool = Field(default=False, alias="enableWebSearch")
+    api_key: Optional[str] = Field(default=None, alias="apiKey")
+    api_base_url: Optional[str] = Field(default=None, alias="apiBaseUrl")
+    api_model: Optional[str] = Field(default=None, alias="apiModel")
+    api_reasoning_model: Optional[str] = Field(default=None, alias="apiReasoningModel")
     stream_format: StreamFormat = Field(default="json", alias="streamFormat")
 
 

@@ -1,11 +1,20 @@
 import json
 import logging
-from typing import Any, AsyncGenerator
+from dataclasses import dataclass
+from typing import Any, AsyncGenerator, Optional
 
 import httpx
 
 from app.core.config import settings
 from app.core.logging import log_event
+
+
+@dataclass(frozen=True)
+class AIRequestOptions:
+    api_key: Optional[str] = None
+    base_url: Optional[str] = None
+    model: Optional[str] = None
+    reasoning_model: Optional[str] = None
 
 
 def _extract_text(value: Any) -> str:
@@ -37,28 +46,53 @@ class OpenAICompatibleClient:
         self._send_reasoning_effort = settings.ai_send_reasoning_effort
         self._logger = logging.getLogger("chatweb.backend.services.ai_client")
 
-    @property
-    def enabled(self) -> bool:
-        return bool(self._api_key.strip())
+    def is_enabled(self, options: Optional[AIRequestOptions] = None) -> bool:
+        api_key = self._resolve_api_key(options)
+        return bool(api_key.strip())
+
+    def _resolve_api_key(self, options: Optional[AIRequestOptions]) -> str:
+        if options and isinstance(options.api_key, str) and options.api_key.strip():
+            return options.api_key.strip()
+        return self._api_key.strip()
+
+    def _resolve_base_url(self, options: Optional[AIRequestOptions]) -> str:
+        if options and isinstance(options.base_url, str) and options.base_url.strip():
+            return options.base_url.strip().rstrip("/")
+        return self._base_url
+
+    def _resolve_model(self, enable_thinking: bool, options: Optional[AIRequestOptions]) -> str:
+        if enable_thinking:
+            if options and isinstance(options.reasoning_model, str) and options.reasoning_model.strip():
+                return options.reasoning_model.strip()
+            return self._reasoning_model
+        if options and isinstance(options.model, str) and options.model.strip():
+            return options.model.strip()
+        return self._model
 
     async def stream_chat(
-        self, messages: list[dict[str, str]], enable_thinking: bool
+        self,
+        messages: list[dict[str, str]],
+        enable_thinking: bool,
+        options: Optional[AIRequestOptions] = None,
     ) -> AsyncGenerator[tuple[str, str], None]:
-        model = self._reasoning_model if enable_thinking else self._model
+        api_key = self._resolve_api_key(options)
+        base_url = self._resolve_base_url(options)
+        model = self._resolve_model(enable_thinking, options)
         log_event(
             self._logger,
             logging.INFO,
             "ai_client.stream.start",
             {
-                "base_url": self._base_url,
+                "base_url": base_url,
                 "model": model,
                 "enable_thinking": enable_thinking,
                 "trust_env": self._trust_env,
+                "override_api_key": bool(options and options.api_key and options.api_key.strip()),
                 "message_count": len(messages),
             },
         )
         headers = {
-            "Authorization": f"Bearer {self._api_key}",
+            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         }
         payload: dict[str, Any] = {
@@ -73,7 +107,7 @@ class OpenAICompatibleClient:
             async with httpx.AsyncClient(timeout=self._timeout, trust_env=self._trust_env) as client:
                 async with client.stream(
                     "POST",
-                    f"{self._base_url}/chat/completions",
+                    f"{base_url}/chat/completions",
                     headers=headers,
                     json=payload,
                 ) as response:

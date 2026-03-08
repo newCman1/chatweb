@@ -58,17 +58,31 @@ export class SseChatApi implements IChatApi {
     }
 
     try {
+      const payload: Record<string, unknown> = {
+        conversationId: input.conversationId,
+        content,
+        enableThinking: Boolean(input.enableThinking),
+        enableWebSearch: Boolean(input.enableWebSearch),
+        streamFormat: this.streamFormat
+      };
+      if (input.apiKey?.trim()) {
+        payload.apiKey = input.apiKey.trim();
+      }
+      if (input.apiBaseUrl?.trim()) {
+        payload.apiBaseUrl = input.apiBaseUrl.trim();
+      }
+      if (input.apiModel?.trim()) {
+        payload.apiModel = input.apiModel.trim();
+      }
+      if (input.apiReasoningModel?.trim()) {
+        payload.apiReasoningModel = input.apiReasoningModel.trim();
+      }
       const response = await this.requestWithRetry(
         `${this.baseUrl}/chat/stream`,
         {
           method: "POST",
           headers,
-          body: JSON.stringify({
-            conversationId: input.conversationId,
-            content,
-            enableThinking: Boolean(input.enableThinking),
-            streamFormat: this.streamFormat
-          }),
+          body: JSON.stringify(payload),
           signal: controller.signal
         },
         this.retryTimes

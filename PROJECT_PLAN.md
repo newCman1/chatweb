@@ -162,6 +162,7 @@ Acceptance:
 8. Done: Add environment profile files for frontend and backend.
 9. Done: Add optional OpenAI-compatible backend provider adapter and thinking stream.
 10. Done: Add DeepSeek default provider profile (`deepseek-chat` / `deepseek-reasoner`) with per-request model switch by `enableThinking`.
+11. Done: Add user-level runtime API settings (API key/baseUrl/model) and optional web-search toggle in desktop composer.
 
 ## 9. Plan Correction Log
 - 2026-03-08: Added top-level project plan document as requested.
@@ -185,3 +186,4 @@ Acceptance:
 - 2026-03-08: Switched default AI profile to DeepSeek and split normal/reasoning models for the deep-thinking toggle path.
 - 2026-03-08: Fixed DeepSeek connectivity by adding `CHATWEB_AI_HTTP_TRUST_ENV` (default `false`) to avoid inherited proxy-caused `httpx.ConnectError`.
 - 2026-03-08: Simplified desktop UI density, merged composer actions into a single Send/Stop button, and persisted per-message thinking expansion across conversation switching.
+- 2026-03-08: Added request-level provider overrides and optional web-search context pipeline, configurable directly from frontend page settings.

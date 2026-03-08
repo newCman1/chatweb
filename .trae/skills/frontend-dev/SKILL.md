@@ -42,6 +42,9 @@ Use this skill whenever the task modifies frontend code.
 - Frontend API adapter must support:
   - conversation history loading (`listMessages`) on init/select
   - request timeout + retry for backend calls
+  - request-level runtime options:
+    - `enableWebSearch`
+    - `apiKey` / `apiBaseUrl` / `apiModel` / `apiReasoningModel`
 
 ## Delivery Rules
 
@@ -52,6 +55,10 @@ Use this skill whenever the task modifies frontend code.
   - expanded state should persist in store across conversation switching
 - Keep compose actions unified:
   - single primary action button (`Send` while idle / `Stop` while streaming)
+- Keep user runtime configuration in-page:
+  - expose API settings panel in composer
+  - persist user settings in localStorage
+  - do not hardcode user key in source files
 - Preserve `IChatApi` boundary and adapter injection pattern.
 - Add or update tests when behavior changes.
 - Keep frontend logger redaction enabled for sensitive fields.

@@ -107,6 +107,34 @@ describe("chat store", () => {
     expect(apiStub.lastInput?.enableThinking).toBe(false);
   });
 
+  it("sends web search and runtime api options to api", async () => {
+    const conversationStore = useConversationStore();
+    await conversationStore.createConversation();
+    const chatStore = useChatStore();
+    chatStore.setEnableWebSearch(true);
+    chatStore.setUserApiKey("sk-test");
+    chatStore.setUserApiBaseUrl("https://api.deepseek.com/v1");
+    chatStore.setUserApiModel("deepseek-chat");
+    chatStore.setUserApiReasoningModel("deepseek-reasoner");
+
+    await chatStore.send("use web");
+    expect(apiStub.lastInput?.enableWebSearch).toBe(true);
+    expect(apiStub.lastInput?.apiKey).toBe("sk-test");
+    expect(apiStub.lastInput?.apiBaseUrl).toBe("https://api.deepseek.com/v1");
+    expect(apiStub.lastInput?.apiModel).toBe("deepseek-chat");
+    expect(apiStub.lastInput?.apiReasoningModel).toBe("deepseek-reasoner");
+  });
+
+  it("persists web search and api settings", () => {
+    const chatStore = useChatStore();
+    chatStore.setEnableWebSearch(true);
+    chatStore.setUserApiKey("sk-local");
+    chatStore.setUserApiBaseUrl("https://api.local/v1");
+    expect(window.localStorage.getItem("chatweb.enableWebSearch")).toBe("1");
+    expect(window.localStorage.getItem("chatweb.userApiKey")).toBe("sk-local");
+    expect(window.localStorage.getItem("chatweb.userApiBaseUrl")).toBe("https://api.local/v1");
+  });
+
   it("keeps thinking panel expanded state in store", () => {
     const chatStore = useChatStore();
     const messageId = crypto.randomUUID();

@@ -119,6 +119,8 @@ npm run dev
 
 Request payload can include:
 - `enableThinking: true|false` (user-controlled deep thinking switch)
+- `enableWebSearch: true|false` (optional internet search snippets)
+- `apiKey` / `apiBaseUrl` / `apiModel` / `apiReasoningModel` (optional runtime override from UI settings)
 
 2. `binary`
 - `Content-Type: application/octet-stream`
@@ -160,6 +162,19 @@ If you configure an API key, backend will stream from an OpenAI-compatible `/cha
 - `CHATWEB_AI_FALLBACK_ON_ERROR=true` (fallback to local mock stream when provider call fails)
 
 DeepSeek is now the default profile in `backend/.env.development` and `backend/.env.production`.
+
+## In-Page User Settings
+
+- Composer includes user-level toggles:
+  - `Deep thinking`
+  - `Web search`
+- Composer includes `API Settings` panel:
+  - API Key
+  - Base URL
+  - Model
+  - Reasoning Model
+- These values are stored in browser localStorage and sent per request to backend.
+- If user API fields are empty, backend falls back to server-side `CHATWEB_AI_*` env config.
 
 ## CI
 
