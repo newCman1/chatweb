@@ -5,6 +5,11 @@ import MessageBubble from "./MessageBubble.vue";
 
 const props = defineProps<{
   messages: Message[];
+  thinkingExpandedByMessageId: Record<string, boolean>;
+}>();
+
+defineEmits<{
+  "toggle-thinking": [messageId: string];
 }>();
 
 const containerRef = ref<HTMLElement | null>(null);
@@ -31,45 +36,34 @@ onMounted(() => {
 });
 
 watch(
-  () => props.messages.map((msg) => `${msg.id}-${msg.content.length}-${msg.thinking?.length ?? 0}-${msg.status}`).join("|"),
+  () =>
+    props.messages.map((msg) => `${msg.id}-${msg.content.length}-${msg.thinking?.length ?? 0}-${msg.status}`).join("|"),
   () => {
     scrollToBottom();
   }
 );
 
-const suggestions = [
-  { icon: "💡", text: "Explain complex concepts" },
-  { icon: "✍️", text: "Help me write an article" },
-  { icon: "🐛", text: "Debug my code" },
-  { icon: "🧠", text: "Brainstorm ideas" }
-];
+const suggestions = ["Explain a concept", "Write a draft", "Debug this code"];
 </script>
 
 <template>
   <section ref="containerRef" class="message-list" @scroll="updateStickState">
     <div v-if="messages.length === 0" class="empty-state">
-      <div class="empty-state-icon">🤖</div>
-      <h2>Welcome to Chat AI</h2>
-      <p>Your intelligent assistant. Ask anything and get helpful responses in real-time.</p>
-      
-      <div class="suggestions">
-        <div 
-          v-for="(suggestion, index) in suggestions" 
-          :key="index"
-          class="suggestion-item"
-        >
-          <span class="suggestion-icon">{{ suggestion.icon }}</span>
-          <span class="suggestion-text">{{ suggestion.text }}</span>
-        </div>
+      <h2>Start a new conversation</h2>
+      <p>Type a message below. Responses stream in real time.</p>
+      <div class="suggestions" aria-hidden="true">
+        <span v-for="item in suggestions" :key="item" class="suggestion-item">{{ item }}</span>
       </div>
     </div>
 
     <template v-else>
       <div class="messages-container">
-        <MessageBubble 
-          v-for="msg in messages" 
-          :key="msg.id" 
+        <MessageBubble
+          v-for="msg in messages"
+          :key="msg.id"
           :message="msg"
+          :thinking-visible="Boolean(thinkingExpandedByMessageId[msg.id])"
+          @toggle-thinking="$emit('toggle-thinking', msg.id)"
         />
       </div>
       <div class="messages-end"></div>
@@ -80,11 +74,11 @@ const suggestions = [
 <style scoped>
 .message-list {
   overflow-y: auto;
-  padding: 28px;
+  padding: 22px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  background: linear-gradient(180deg, var(--bg-panel) 0%, var(--bg-base) 100%);
+  gap: 16px;
+  background: var(--bg-base);
 }
 
 .empty-state {
@@ -95,85 +89,49 @@ const suggestions = [
   justify-content: center;
   text-align: center;
   color: var(--text-tertiary);
-  padding: 48px 24px;
-  min-height: 400px;
-}
-
-.empty-state-icon {
-  font-size: 72px;
-  margin-bottom: 24px;
-  animation: float 3s ease-in-out infinite;
-  filter: drop-shadow(0 10px 30px rgba(59, 130, 246, 0.3));
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-12px) rotate(3deg); }
+  padding: 32px 24px;
+  min-height: 360px;
 }
 
 .empty-state h2 {
   color: var(--text-main);
-  font-size: 28px;
-  font-weight: 800;
-  margin: 0 0 12px;
-  background: var(--brand-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  letter-spacing: -0.5px;
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 10px;
 }
 
 .empty-state > p {
-  margin: 0 0 32px;
+  margin: 0 0 20px;
   font-size: 15px;
-  max-width: 420px;
-  line-height: 1.7;
+  max-width: 380px;
+  line-height: 1.6;
   color: var(--text-secondary);
 }
 
 .suggestions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
   width: 100%;
-  max-width: 360px;
+  max-width: 420px;
+  justify-content: center;
 }
 
 .suggestion-item {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 14px;
-  padding: 16px 20px;
-  background: var(--bg-panel);
+  padding: 7px 12px;
+  background: #fff;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  font-size: 14px;
+  border-radius: 999px;
+  font-size: 13px;
   color: var(--text-secondary);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  text-align: left;
-}
-
-.suggestion-item:hover {
-  border-color: var(--brand);
-  background: var(--brand-soft);
-  transform: translateX(8px);
-  box-shadow: var(--shadow-md);
-}
-
-.suggestion-icon {
-  font-size: 20px;
-  flex-shrink: 0;
-}
-
-.suggestion-text {
-  font-weight: 500;
 }
 
 .messages-container {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .messages-end {

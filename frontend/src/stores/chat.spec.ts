@@ -106,4 +106,14 @@ describe("chat store", () => {
     await chatStore.send("no deep thinking");
     expect(apiStub.lastInput?.enableThinking).toBe(false);
   });
+
+  it("keeps thinking panel expanded state in store", () => {
+    const chatStore = useChatStore();
+    const messageId = crypto.randomUUID();
+    expect(chatStore.isThinkingExpanded(messageId)).toBe(false);
+    chatStore.toggleThinkingExpanded(messageId);
+    expect(chatStore.isThinkingExpanded(messageId)).toBe(true);
+    chatStore.toggleThinkingExpanded(messageId);
+    expect(chatStore.isThinkingExpanded(messageId)).toBe(false);
+  });
 });

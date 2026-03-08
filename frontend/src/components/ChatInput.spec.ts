@@ -49,4 +49,18 @@ describe("ChatInput", () => {
     await checkbox.setValue(true);
     expect(wrapper.emitted("update:enableDeepThinking")?.[0]).toEqual([true]);
   });
+
+  it("emits stop when primary button clicked in streaming mode", async () => {
+    const wrapper = mount(ChatInput, {
+      props: {
+        isStreaming: true,
+        disabled: false,
+        enableDeepThinking: false
+      }
+    });
+
+    const button = wrapper.find("button.primary-btn");
+    await button.trigger("click");
+    expect(wrapper.emitted("stop")).toHaveLength(1);
+  });
 });

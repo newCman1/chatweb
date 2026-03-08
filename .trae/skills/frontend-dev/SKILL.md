@@ -46,7 +46,12 @@ Use this skill whenever the task modifies frontend code.
 ## Delivery Rules
 
 - Keep desktop-first chat flow stable.
-- Keep thinking UI optional (header toggle controls whether thinking panels are rendered).
+- Keep thinking UI optional and message-local:
+  - deep thinking switch is near composer send area
+  - each assistant message has its own thinking expand/collapse control
+  - expanded state should persist in store across conversation switching
+- Keep compose actions unified:
+  - single primary action button (`Send` while idle / `Stop` while streaming)
 - Preserve `IChatApi` boundary and adapter injection pattern.
 - Add or update tests when behavior changes.
 - Keep frontend logger redaction enabled for sensitive fields.

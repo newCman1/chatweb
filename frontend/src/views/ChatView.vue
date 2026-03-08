@@ -25,6 +25,10 @@ async function onSend(content: string) {
   await chatStore.send(content);
 }
 
+function onToggleThinking(messageId: string) {
+  chatStore.toggleThinkingExpanded(messageId);
+}
+
 watch(
   () => chatStore.errorText,
   (error) => {
@@ -55,7 +59,11 @@ onMounted(async () => {
 
     <section class="chat-main">
       <ChatHeader :title="title" />
-      <MessageList :messages="messages" />
+      <MessageList
+        :messages="messages"
+        :thinking-expanded-by-message-id="chatStore.thinkingExpandedByMessageId"
+        @toggle-thinking="onToggleThinking"
+      />
       <p v-if="chatStore.errorText" class="error-toast">{{ chatStore.errorText }}</p>
       <ChatInput
         :disabled="!conversationStore.currentConversationId"

@@ -184,3 +184,4 @@ Acceptance:
 - 2026-03-08: Added optional OpenAI-compatible backend adapter via `CHATWEB_AI_*` config, with mock fallback.
 - 2026-03-08: Switched default AI profile to DeepSeek and split normal/reasoning models for the deep-thinking toggle path.
 - 2026-03-08: Fixed DeepSeek connectivity by adding `CHATWEB_AI_HTTP_TRUST_ENV` (default `false`) to avoid inherited proxy-caused `httpx.ConnectError`.
+- 2026-03-08: Simplified desktop UI density, merged composer actions into a single Send/Stop button, and persisted per-message thinking expansion across conversation switching.

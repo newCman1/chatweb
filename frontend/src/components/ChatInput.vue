@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 
 const props = defineProps<{
   disabled?: boolean;
@@ -15,11 +15,22 @@ const emit = defineEmits<{
 
 const draft = ref("");
 
+const canSend = computed(() => !props.disabled && !props.isStreaming && draft.value.trim().length > 0);
+const actionLabel = computed(() => (props.isStreaming ? "Stop" : "Send"));
+
 function onSend() {
   const content = draft.value.trim();
   if (!content || props.disabled || props.isStreaming) return;
   emit("send", content);
   draft.value = "";
+}
+
+function onPrimaryAction() {
+  if (props.isStreaming) {
+    emit("stop");
+    return;
+  }
+  onSend();
 }
 
 function onKeydown(event: KeyboardEvent) {
@@ -47,24 +58,23 @@ function onToggleDeepThinking(event: Event) {
         @keydown="onKeydown"
       />
       <div class="chat-input-toolbar">
-        <span class="input-hint">
-          <kbd>Enter</kbd> to send · <kbd>Shift</kbd> + <kbd>Enter</kbd> for new line
-        </span>
+        <label class="thinking-toggle">
+          <input type="checkbox" :checked="enableDeepThinking" @change="onToggleDeepThinking" />
+          <span class="toggle-text">Deep thinking</span>
+        </label>
+
+        <div class="input-actions">
+          <span class="input-hint"><kbd>Enter</kbd> send, <kbd>Shift</kbd>+<kbd>Enter</kbd> newline</span>
+          <button
+            class="primary-btn"
+            :class="{ stop: isStreaming }"
+            :disabled="isStreaming ? false : !canSend"
+            @click="onPrimaryAction"
+          >
+            {{ actionLabel }}
+          </button>
+        </div>
       </div>
-    </div>
-
-    <div class="compose-options">
-      <label class="thinking-toggle">
-        <input type="checkbox" :checked="enableDeepThinking" @change="onToggleDeepThinking" />
-        <span class="toggle-text">Enable deep thinking</span>
-      </label>
-    </div>
-
-    <div class="chat-actions">
-      <button class="stop-btn" :disabled="!isStreaming" @click="$emit('stop')">Stop</button>
-      <button class="send-btn" :disabled="disabled || isStreaming || !draft.trim()" @click="onSend">
-        Send
-      </button>
     </div>
   </footer>
 </template>
@@ -72,32 +82,31 @@ function onToggleDeepThinking(event: Event) {
 <style scoped>
 .chat-input-wrap {
   border-top: 1px solid var(--border);
-  padding: 20px 24px 24px;
+  padding: 16px 20px 18px;
   background: var(--bg-panel);
 }
 
 .chat-input-container {
-  background: var(--bg-soft);
+  background: #fff;
   border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  padding: 6px;
+  border-radius: 14px;
   transition: all var(--transition-fast);
 }
 
 .chat-input-container:focus-within {
   border-color: var(--brand);
-  box-shadow: 0 0 0 4px var(--brand-soft);
+  box-shadow: 0 0 0 3px var(--brand-soft);
 }
 
 .chat-input {
   width: 100%;
-  min-height: 56px;
-  max-height: 200px;
-  padding: 14px 18px;
+  min-height: 52px;
+  max-height: 180px;
+  padding: 12px 14px;
   border: none;
-  border-radius: var(--radius-lg);
+  border-radius: 14px 14px 0 0;
   background: transparent;
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.6;
   color: var(--text-main);
   resize: none;
@@ -110,41 +119,19 @@ function onToggleDeepThinking(event: Event) {
 }
 
 .chat-input-toolbar {
-  padding: 10px 14px;
   border-top: 1px solid var(--border-light);
-  margin-top: 6px;
-}
-
-.input-hint {
-  font-size: 12px;
-  color: var(--text-tertiary);
+  padding: 10px 12px;
   display: flex;
   align-items: center;
-  gap: 6px;
-}
-
-.input-hint kbd {
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 2px 6px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-}
-
-.compose-options {
-  margin-top: 10px;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .thinking-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--bg-soft);
-  font-size: 13px;
+  gap: 6px;
+  font-size: 12px;
   color: var(--text-secondary);
   user-select: none;
 }
@@ -153,39 +140,54 @@ function onToggleDeepThinking(event: Event) {
   margin: 0;
 }
 
-.chat-actions {
-  margin-top: 10px;
+.input-actions {
   display: inline-flex;
-  gap: 8px;
+  align-items: center;
+  gap: 10px;
 }
 
-.chat-actions button {
+.input-hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.input-hint kbd {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.primary-btn {
   border: none;
-  border-radius: var(--radius-md);
-  padding: 10px 20px;
-  font-size: 14px;
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.send-btn {
-  background: var(--brand-gradient);
   color: #fff;
+  background: var(--brand);
+  transition: all var(--transition-fast);
+  min-width: 72px;
 }
 
-.send-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.primary-btn:hover:not(:disabled) {
+  background: var(--brand-strong);
 }
 
-.stop-btn {
-  background: var(--danger-soft);
-  color: var(--danger);
+.primary-btn.stop {
+  background: var(--danger);
 }
 
-.stop-btn:disabled {
-  opacity: 0.4;
+.primary-btn.stop:hover {
+  background: #dc2626;
+}
+
+.primary-btn:disabled {
+  opacity: 0.45;
   cursor: not-allowed;
 }
 </style>

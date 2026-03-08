@@ -1,21 +1,18 @@
 <script setup lang="ts">
 import type { Message } from "@/types/chat";
-import { computed, ref, watch } from "vue";
+import { computed } from "vue";
 
 const props = defineProps<{
   message: Message;
+  thinkingVisible: boolean;
+}>();
+
+defineEmits<{
+  "toggle-thinking": [];
 }>();
 
 const isUser = computed(() => props.message.role === "user");
 const hasThinking = computed(() => Boolean(props.message.thinking?.trim()));
-const thinkingVisible = ref(false);
-
-watch(
-  () => props.message.id,
-  () => {
-    thinkingVisible.value = false;
-  }
-);
 
 const formattedTime = computed(() => {
   const date = new Date(props.message.createdAt);
@@ -37,24 +34,19 @@ const statusText = computed(() => {
       return "";
   }
 });
-
-function toggleThinking() {
-  thinkingVisible.value = !thinkingVisible.value;
-}
 </script>
 
 <template>
   <article class="message-row" :class="message.role">
     <div class="message-avatar" :class="message.role">
       <span class="avatar-text">{{ isUser ? "You" : "AI" }}</span>
-      <div v-if="!isUser" class="avatar-glow"></div>
     </div>
 
     <div class="message-bubble-wrapper">
       <div class="message-bubble" :class="message.role">
         <div v-if="message.role === 'assistant' && hasThinking" class="thinking-wrap">
-          <button class="thinking-chip" type="button" @click="toggleThinking">
-            {{ thinkingVisible ? "隐藏思考" : "显示思考" }}
+          <button class="thinking-chip" type="button" @click="$emit('toggle-thinking')">
+            {{ thinkingVisible ? "Hide thinking" : "Show thinking" }}
           </button>
           <pre v-if="thinkingVisible" class="thinking-content">{{ message.thinking }}</pre>
         </div>
@@ -82,19 +74,7 @@ function toggleThinking() {
 <style scoped>
 .message-row {
   display: flex;
-  gap: 14px;
-  animation: messageAppear 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes messageAppear {
-  from {
-    opacity: 0;
-    transform: translateY(15px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  gap: 12px;
 }
 
 .message-row.user {
@@ -102,60 +82,31 @@ function toggleThinking() {
 }
 
 .message-avatar {
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
   flex-shrink: 0;
-  box-shadow: var(--shadow-sm);
-  transition: all var(--transition-fast);
-  position: relative;
-}
-
-.message-avatar:hover {
-  transform: scale(1.1);
 }
 
 .message-avatar.user {
-  background: var(--brand-gradient);
-  color: white;
-  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
+  background: var(--brand);
+  color: #fff;
 }
 
 .message-avatar.assistant {
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  background: #e2e8f0;
   color: var(--text-secondary);
-  border: 2px solid var(--border);
-}
-
-.avatar-text {
-  position: relative;
-  z-index: 1;
-}
-
-.avatar-glow {
-  position: absolute;
-  inset: -2px;
-  background: var(--brand-gradient);
-  border-radius: 50%;
-  opacity: 0;
-  filter: blur(8px);
-  transition: opacity var(--transition-fast);
-  z-index: 0;
-}
-
-.message-avatar.assistant:hover .avatar-glow {
-  opacity: 0.3;
 }
 
 .message-bubble-wrapper {
   display: flex;
   flex-direction: column;
-  max-width: 70%;
+  max-width: 72%;
   gap: 6px;
 }
 
@@ -164,39 +115,30 @@ function toggleThinking() {
 }
 
 .message-bubble {
-  border-radius: var(--radius-lg);
-  padding: 16px 20px;
-  position: relative;
-  box-shadow: var(--shadow-sm);
-  transition: all var(--transition-fast);
-}
-
-.message-bubble:hover {
-  box-shadow: var(--shadow-md);
+  border-radius: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
 }
 
 .message-bubble.user {
-  background: var(--brand-gradient);
-  color: white;
-  border-bottom-right-radius: var(--radius-sm);
-  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
+  background: var(--brand);
+  color: #fff;
+  border-color: var(--brand);
 }
 
 .message-bubble.assistant {
-  background: var(--bg-panel);
+  background: #fff;
   color: var(--text-main);
-  border: 1px solid var(--border);
-  border-bottom-left-radius: var(--radius-sm);
 }
 
 .thinking-wrap {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .thinking-chip {
   border: 1px solid var(--border);
   border-radius: 999px;
-  padding: 4px 10px;
+  padding: 3px 10px;
   font-size: 12px;
   color: var(--text-secondary);
   background: var(--bg-soft);
@@ -209,16 +151,15 @@ function toggleThinking() {
 }
 
 .thinking-content {
-  margin: 10px 0 0;
+  margin: 8px 0 0;
   font-size: 12px;
   color: var(--text-secondary);
   white-space: pre-wrap;
   word-break: break-word;
   font-family: var(--font-main);
-  padding: 12px;
+  padding: 10px;
   background: var(--bg-soft);
-  border-radius: var(--radius-sm);
-  border-left: 3px solid var(--brand);
+  border-radius: 10px;
   line-height: 1.6;
 }
 
@@ -226,14 +167,14 @@ function toggleThinking() {
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
-  line-height: 1.7;
-  font-size: 15px;
+  line-height: 1.6;
+  font-size: 14px;
 }
 
 .message-meta {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   font-size: 12px;
   color: var(--text-tertiary);
   padding: 0 4px;
@@ -243,20 +184,12 @@ function toggleThinking() {
   justify-content: flex-end;
 }
 
-.message-time {
-  font-weight: 500;
-}
-
 .status-indicator {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   font-size: 11px;
   color: var(--text-tertiary);
-  padding: 4px 10px;
-  background: var(--bg-soft);
-  border-radius: 999px;
-  font-weight: 600;
 }
 
 .status-dot {
@@ -264,19 +197,6 @@ function toggleThinking() {
   height: 6px;
   border-radius: 50%;
   background: var(--warning);
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.4;
-    transform: scale(0.8);
-  }
 }
 
 .status-indicator.streaming .status-dot {
@@ -285,41 +205,40 @@ function toggleThinking() {
 
 .status-indicator.error .status-dot {
   background: var(--danger);
-  animation: none;
 }
 
 .typing-indicator {
   display: flex;
-  gap: 5px;
-  padding: 8px 0;
+  gap: 4px;
+  padding: 4px 0;
 }
 
 .typing-indicator span {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   background: var(--text-tertiary);
   border-radius: 50%;
-  animation: typingBounce 1.4s ease-in-out infinite both;
-}
-
-.typing-indicator span:nth-child(1) {
-  animation-delay: -0.32s;
+  animation: typing-bounce 1.2s ease-in-out infinite both;
 }
 
 .typing-indicator span:nth-child(2) {
-  animation-delay: -0.16s;
+  animation-delay: 0.15s;
 }
 
-@keyframes typingBounce {
+.typing-indicator span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes typing-bounce {
   0%,
   80%,
   100% {
-    transform: scale(0.6);
     opacity: 0.4;
+    transform: translateY(0);
   }
   40% {
-    transform: scale(1);
     opacity: 1;
+    transform: translateY(-2px);
   }
 }
 </style>

@@ -11,6 +11,7 @@ interface ChatState {
   activeAbortController: AbortController | null;
   errorText: string | null;
   enableDeepThinking: boolean;
+  thinkingExpandedByMessageId: Record<string, boolean>;
 }
 
 const uid = () => crypto.randomUUID();
@@ -29,7 +30,8 @@ export const useChatStore = defineStore("chat", {
     activeAssistantMessageId: null,
     activeAbortController: null,
     errorText: null,
-    enableDeepThinking: loadDeepThinkingPreference()
+    enableDeepThinking: loadDeepThinkingPreference(),
+    thinkingExpandedByMessageId: {}
   }),
   actions: {
     async send(content: string) {
@@ -140,6 +142,12 @@ export const useChatStore = defineStore("chat", {
       if (typeof window !== "undefined") {
         window.localStorage.setItem(DEEP_THINKING_PREF_KEY, enable ? "1" : "0");
       }
+    },
+    isThinkingExpanded(messageId: string): boolean {
+      return this.thinkingExpandedByMessageId[messageId] === true;
+    },
+    toggleThinkingExpanded(messageId: string) {
+      this.thinkingExpandedByMessageId[messageId] = !this.isThinkingExpanded(messageId);
     }
   }
 });
