@@ -53,6 +53,16 @@ class Settings:
     ai_send_reasoning_effort: bool
     thinking_enabled: bool
     ai_fallback_on_error: bool
+    supervisor_primary_name: str
+    supervisor_worker_name: str
+    supervisor_primary_api_key: str
+    supervisor_primary_base_url: str
+    supervisor_primary_model: str
+    supervisor_primary_reasoning_model: str
+    supervisor_worker_api_key: str
+    supervisor_worker_base_url: str
+    supervisor_worker_model: str
+    supervisor_worker_reasoning_model: str
 
 
 def load_settings() -> Settings:
@@ -78,6 +88,16 @@ def load_settings() -> Settings:
         ai_send_reasoning_effort=_bool("CHATWEB_AI_SEND_REASONING_EFFORT", False),
         thinking_enabled=_bool("CHATWEB_THINKING_ENABLED", True),
         ai_fallback_on_error=_bool("CHATWEB_AI_FALLBACK_ON_ERROR", True),
+        supervisor_primary_name=os.getenv("CHATWEB_SUPERVISOR_PRIMARY_NAME", "Primary AI"),
+        supervisor_worker_name=os.getenv("CHATWEB_SUPERVISOR_WORKER_NAME", "Worker AI"),
+        supervisor_primary_api_key=os.getenv("CHATWEB_SUPERVISOR_PRIMARY_API_KEY", ""),
+        supervisor_primary_base_url=os.getenv("CHATWEB_SUPERVISOR_PRIMARY_BASE_URL", ""),
+        supervisor_primary_model=os.getenv("CHATWEB_SUPERVISOR_PRIMARY_MODEL", ""),
+        supervisor_primary_reasoning_model=os.getenv("CHATWEB_SUPERVISOR_PRIMARY_REASONING_MODEL", ""),
+        supervisor_worker_api_key=os.getenv("CHATWEB_SUPERVISOR_WORKER_API_KEY", ""),
+        supervisor_worker_base_url=os.getenv("CHATWEB_SUPERVISOR_WORKER_BASE_URL", ""),
+        supervisor_worker_model=os.getenv("CHATWEB_SUPERVISOR_WORKER_MODEL", ""),
+        supervisor_worker_reasoning_model=os.getenv("CHATWEB_SUPERVISOR_WORKER_REASONING_MODEL", ""),
     )
 
 

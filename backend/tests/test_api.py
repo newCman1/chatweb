@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.services import chat_service as chat_service_module
+from app.services import supervisor_service as supervisor_service_module
 
 
 client = TestClient(app)
@@ -262,3 +263,70 @@ def test_error_code_for_validation_failure():
     payload = response.json()["error"]
     assert payload["code"] == "REQUEST_VALIDATION_ERROR"
     assert "requestId" in payload
+
+
+def test_supervisor_run_and_get(monkeypatch):
+    async def fake_plan(_objective, _history, _max_tasks):
+        return "1. Analyze user goal\n2. Produce implementation draft"
+
+    async def fake_worker(task_title, _objective, _plan_text, _shared_history, review_feedback=None):
+        suffix = f" / feedback={review_feedback}" if review_feedback else ""
+        return f"worker done: {task_title}{suffix}"
+
+    async def fake_review(task_title, _objective, _plan_text, _worker_output):
+        if "Analyze" in task_title:
+            return ("PASS", "Looks good")
+        return ("REVISE", "Add concrete example")
+
+    async def fake_summary(_objective, _plan_text, tasks):
+        return f"summary tasks={len(tasks)}"
+
+    monkeypatch.setattr(supervisor_service_module.supervisor_service, "_primary_plan", fake_plan)
+    monkeypatch.setattr(supervisor_service_module.supervisor_service, "_worker_execute", fake_worker)
+    monkeypatch.setattr(supervisor_service_module.supervisor_service, "_primary_review", fake_review)
+    monkeypatch.setattr(supervisor_service_module.supervisor_service, "_primary_summary", fake_summary)
+
+    create = client.post("/api/conversations")
+    assert create.status_code == 200
+    conversation_id = create.json()["conversation"]["id"]
+
+    run_response = client.post(
+        "/api/supervisor/run",
+        json={
+            "conversationId": conversation_id,
+            "objective": "Build a deployment checklist",
+            "maxTasks": 2,
+            "maxRetries": 1,
+        },
+    )
+    assert run_response.status_code == 200
+    run = run_response.json()["run"]
+    assert run["conversationId"] == conversation_id
+    assert run["primaryName"]
+    assert run["workerName"]
+    assert len(run["tasks"]) == 2
+    assert run["tasks"][0]["status"] == "completed"
+    assert run["tasks"][1]["status"] in {"completed", "failed"}
+    assert run["summary"] == "summary tasks=2"
+
+    get_response = client.get(f"/api/supervisor/run/{run['id']}")
+    assert get_response.status_code == 200
+    assert get_response.json()["run"]["id"] == run["id"]
+
+
+def test_supervisor_run_validation_error():
+    create = client.post("/api/conversations")
+    assert create.status_code == 200
+    conversation_id = create.json()["conversation"]["id"]
+    response = client.post(
+        "/api/supervisor/run",
+        json={
+            "conversationId": conversation_id,
+            "objective": "x",
+            "maxTasks": 0,
+            "maxRetries": 1,
+        },
+    )
+    assert response.status_code == 400
+    payload = response.json()["error"]
+    assert payload["code"] == "SUPERVISOR_INVALID_MAX_TASKS"

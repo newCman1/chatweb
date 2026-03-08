@@ -140,6 +140,8 @@ Request payload can include:
 - `GET /api/conversations/{conversation_id}/messages`
 - `POST /api/chat/stream`
 - `POST /api/chat/abort`
+- `POST /api/supervisor/run`
+- `GET /api/supervisor/run/{run_id}`
 
 Error response contract (non-stream endpoints):
 
@@ -169,6 +171,41 @@ If you configure an API key, backend will stream from an OpenAI-compatible `/cha
 - `CHATWEB_AI_FALLBACK_ON_ERROR=true` (fallback to local mock stream when provider call fails)
 
 DeepSeek is now the default profile in `backend/.env.development` and `backend/.env.production`.
+
+## Supervisor Mode (Primary AI monitors Worker AI)
+
+You can run a supervised execution flow where:
+- Primary AI creates/owns plan and reviews each task output.
+- Worker AI executes each task.
+- Both operate on the same conversation history context.
+
+Request:
+
+`POST /api/supervisor/run`
+
+```json
+{
+  "conversationId": "uuid",
+  "objective": "Build deployment checklist",
+  "plan": "1. ...\n2. ...",
+  "maxTasks": 4,
+  "maxRetries": 1
+}
+```
+
+Response includes run status, task-by-task worker output, review verdict, and summary.
+
+Env options (all optional, fallback to `CHATWEB_AI_*` when empty):
+- `CHATWEB_SUPERVISOR_PRIMARY_NAME`
+- `CHATWEB_SUPERVISOR_WORKER_NAME`
+- `CHATWEB_SUPERVISOR_PRIMARY_API_KEY`
+- `CHATWEB_SUPERVISOR_PRIMARY_BASE_URL`
+- `CHATWEB_SUPERVISOR_PRIMARY_MODEL`
+- `CHATWEB_SUPERVISOR_PRIMARY_REASONING_MODEL`
+- `CHATWEB_SUPERVISOR_WORKER_API_KEY`
+- `CHATWEB_SUPERVISOR_WORKER_BASE_URL`
+- `CHATWEB_SUPERVISOR_WORKER_MODEL`
+- `CHATWEB_SUPERVISOR_WORKER_REASONING_MODEL`
 
 ## In-Page User Settings
 
