@@ -27,6 +27,15 @@ Use this skill whenever the task modifies frontend code.
 - `src/types`: shared frontend domain types.
 - `src/styles`: design tokens and global style.
 
+## API Mode Rules
+
+- Runtime API mode is controlled by env vars:
+  - `VITE_CHAT_API_MODE=mock|sse`
+  - `VITE_CHAT_API_BASE_URL=http://127.0.0.1:8000/api`
+  - `VITE_CHAT_STREAM_FORMAT=json|binary`
+- `SseChatApi` must keep compatibility with backend stream contract.
+- Preserve fallback to mock mode for local UI debugging.
+
 ## Delivery Rules
 
 - Keep desktop-first chat flow stable.

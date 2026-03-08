@@ -56,12 +56,18 @@
 - Rule: keep logs structured with context object for quick tracing.
 
 ## 5. Next Integration Steps
-- Implement frontend `SseChatApi` adapter under `src/api`.
-- Replace `setChatApi` injection target in app bootstrap for environment-based adapter selection.
+- Frontend adapter status:
+  - `SseChatApi` implemented under `src/api`.
+  - API injection supports environment-based switch (`mock` / `sse`).
 - Add persistence strategy (server first, optional local fallback).
-- Stream transport can be selected by situation:
+- Stream transport is selectable by situation:
   - `json`: SSE (`text/event-stream`) for browser-native incremental rendering.
   - `binary`: chunked `application/octet-stream` for binary-oriented transport/debug.
+
+Runtime env keys:
+- `VITE_CHAT_API_MODE=mock|sse`
+- `VITE_CHAT_API_BASE_URL=http://127.0.0.1:8000/api`
+- `VITE_CHAT_STREAM_FORMAT=json|binary`
 
 ## 6. Environment Setup and Verification
 - OS: Windows (PowerShell).
@@ -138,11 +144,11 @@ Acceptance:
 - Logs remain useful for debugging without leaking secrets.
 
 ## 8. Immediate Task Queue
-1. Implement `SseChatApi` in frontend and wire adapter switch.
-2. Define frontend parsing rules for `json` and `binary` stream mode.
+1. Done: Implement `SseChatApi` in frontend and wire adapter switch.
+2. Done: Define frontend parsing rules for `json` and `binary` stream mode.
 3. Add conversation history fetch integration from Python backend endpoints.
 4. Add retry + timeout handling in frontend API layer.
-5. Add integration tests for stream abort/error and history loading.
+5. Expand integration tests for stream abort/error and history loading.
 
 ## 9. Plan Correction Log
 - 2026-03-08: Added top-level project plan document as requested.
@@ -155,3 +161,4 @@ Acceptance:
 - 2026-03-08: Added Python backend layered skeleton aligned with frontend layering for easier troubleshooting.
 - 2026-03-08: Added dual stream transport plan (`json` SSE / `binary` chunked) per runtime needs.
 - 2026-03-08: Added dedicated frontend/backend skills so each side can be developed without repeatedly reading the full project plan.
+- 2026-03-08: Completed Stage A adapter baseline (`SseChatApi`) with env-based mode switch and dual stream parser.

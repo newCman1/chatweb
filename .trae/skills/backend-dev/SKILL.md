@@ -33,6 +33,9 @@ Use this skill whenever the task modifies backend code.
   - `json`: SSE (`text/event-stream`)
   - `binary`: chunked (`application/octet-stream`)
 - Keep frontend compatibility for conversation/message fields.
+- Keep `json` mode event shape stable:
+  - `event: chunk`, `data: {"delta":"..."}`
+  - `event: done`, `data: {"done":true}` (or `{"stopped":true}`)
 
 ## Delivery Rules
 
