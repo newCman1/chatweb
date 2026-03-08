@@ -22,3 +22,4 @@ class MessageRecord:
     content: str
     status: str
     created_at: str
+    thinking: str = ""

@@ -2,7 +2,7 @@ import json
 import logging
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional, Tuple
 
 SENSITIVE_KEYS = {"authorization", "token", "password", "secret", "api_key", "apikey"}
 
@@ -14,7 +14,7 @@ def _normalize_level(level: str) -> str:
     return normalized
 
 
-def _load_xml_config() -> tuple[str | None, str | None]:
+def _load_xml_config() -> Tuple[Optional[str], Optional[str]]:
     xml_path = Path(__file__).resolve().parents[2] / "logging.xml"
     if not xml_path.exists():
         return None, None
@@ -55,7 +55,7 @@ def get_logger(name: str) -> logging.Logger:
     return logging.getLogger(name)
 
 
-def log_event(logger: logging.Logger, level: int, event: str, context: dict[str, Any] | None = None) -> None:
+def log_event(logger: logging.Logger, level: int, event: str, context: Optional[dict[str, Any]] = None) -> None:
     if context is None:
         logger.log(level, event)
         return

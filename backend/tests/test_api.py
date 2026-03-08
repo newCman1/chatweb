@@ -26,9 +26,13 @@ def test_conversation_and_stream_json():
         },
     )
     assert stream_response.status_code == 200
+    assert "event: thinking" in stream_response.text
     assert "event: chunk" in stream_response.text
     assert "event: done" in stream_response.text
 
     messages = client.get(f"/api/conversations/{conversation_id}/messages")
     assert messages.status_code == 200
     assert len(messages.json()["messages"]) >= 2
+    assistant = next((m for m in messages.json()["messages"] if m["role"] == "assistant"), None)
+    assert assistant is not None
+    assert "thinking" in assistant

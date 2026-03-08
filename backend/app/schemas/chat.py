@@ -1,4 +1,5 @@
 from typing import Literal
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -20,6 +21,7 @@ class MessageDTO(BaseModel):
     conversation_id: str = Field(alias="conversationId")
     role: MessageRole
     content: str
+    thinking: Optional[str] = None
     status: MessageStatus
     created_at: str = Field(alias="createdAt")
 

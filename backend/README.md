@@ -60,6 +60,11 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 - `streamFormat: "json"` (default): SSE (`text/event-stream`)
 - `streamFormat: "binary"`: chunked binary (`application/octet-stream`)
 
+SSE json events:
+- `event: thinking` (optional reasoning summary chunks)
+- `event: chunk` (assistant answer chunks)
+- `event: done`
+
 Request example:
 
 ```json
@@ -69,6 +74,17 @@ Request example:
   "streamFormat": "json"
 }
 ```
+
+## AI Provider Config (Optional)
+
+Backend is open-access by default and does not require login. If you set API key env vars, it will call an OpenAI-compatible API; otherwise it uses local mock streaming.
+
+- `CHATWEB_AI_API_KEY`
+- `CHATWEB_AI_MODEL` (default: `gpt-4.1-mini`)
+- `CHATWEB_AI_BASE_URL` (default: `https://api.openai.com/v1`)
+- `CHATWEB_AI_TIMEOUT_SECONDS` (default: `60`)
+- `CHATWEB_AI_REASONING_EFFORT` (default: `medium`)
+- `CHATWEB_THINKING_ENABLED` (default: `true`, for fallback stream)
 
 ## Tests
 

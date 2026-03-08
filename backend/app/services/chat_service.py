@@ -5,15 +5,27 @@ from collections import defaultdict
 from typing import AsyncGenerator
 from uuid import uuid4
 
+import httpx
+
 from app.core.config import settings
 from app.core.logging import log_event
 from app.models.chat import ConversationRecord, MessageRecord, utc_now_iso
+from app.services.ai_client import ai_client
 
 
 def build_assistant_reply(user_text: str) -> str:
     return (
         f"You said: {user_text}\n\n"
         "This is a Python backend streaming demo response. Replace this with real model inference."
+    )
+
+
+def build_thinking_summary(user_text: str) -> str:
+    brief = user_text.strip().replace("\n", " ")[:80]
+    return (
+        f"Understanding request: {brief}\n"
+        "Planning the response structure.\n"
+        "Generating final answer."
     )
 
 
@@ -79,6 +91,7 @@ class ChatService:
             conversation_id=conversation_id,
             role="assistant",
             content="",
+            thinking="",
             status="streaming",
             created_at=utc_now_iso(),
         )
@@ -96,9 +109,9 @@ class ChatService:
         abort_flag = asyncio.Event()
         self._active_abort_flags[conversation_id] = abort_flag
         assistant = await self.create_assistant_message_placeholder(conversation_id)
-        chunks = build_assistant_reply(user_content).split(" ")
+
         try:
-            for chunk in chunks:
+            async for event_type, delta in self._stream_with_provider_fallback(conversation_id, user_content):
                 if abort_flag.is_set():
                     await self._mark_stopped(conversation_id, assistant.id)
                     log_event(
@@ -110,10 +123,14 @@ class ChatService:
                     yield 'event: done\ndata: {"stopped":true}\n\n'
                     return
 
-                await self._append_assistant_text(conversation_id, assistant.id, chunk + " ")
-                payload = json.dumps({"delta": chunk + " "}, ensure_ascii=False)
-                yield f"event: chunk\ndata: {payload}\n\n"
-                await asyncio.sleep(settings.token_delay_seconds)
+                if event_type == "thinking":
+                    await self._append_assistant_thinking(conversation_id, assistant.id, delta)
+                    payload = json.dumps({"delta": delta}, ensure_ascii=False)
+                    yield f"event: thinking\ndata: {payload}\n\n"
+                else:
+                    await self._append_assistant_text(conversation_id, assistant.id, delta)
+                    payload = json.dumps({"delta": delta}, ensure_ascii=False)
+                    yield f"event: chunk\ndata: {payload}\n\n"
 
             await self._mark_done(conversation_id, assistant.id)
             log_event(
@@ -144,12 +161,61 @@ class ChatService:
         finally:
             self._active_abort_flags.pop(conversation_id, None)
 
+    async def _stream_with_provider_fallback(
+        self, conversation_id: str, user_content: str
+    ) -> AsyncGenerator[tuple[str, str], None]:
+        if ai_client.enabled:
+            history = await self._build_provider_messages(conversation_id)
+            try:
+                async for event in ai_client.stream_chat(history):
+                    yield event
+                return
+            except httpx.HTTPError as error:
+                log_event(
+                    self._logger,
+                    logging.ERROR,
+                    "stream.provider.failed",
+                    {"conversation_id": conversation_id, "error": str(error)},
+                )
+                raise
+
+        if settings.thinking_enabled:
+            for token in build_thinking_summary(user_content).split(" "):
+                yield ("thinking", token + " ")
+                await asyncio.sleep(settings.token_delay_seconds)
+
+        for token in build_assistant_reply(user_content).split(" "):
+            yield ("answer", token + " ")
+            await asyncio.sleep(settings.token_delay_seconds)
+
+    async def _build_provider_messages(self, conversation_id: str) -> list[dict[str, str]]:
+        async with self._lock:
+            history = list(self._messages.get(conversation_id, []))
+        provider_messages: list[dict[str, str]] = [
+            {"role": "system", "content": "You are a concise and practical assistant."}
+        ]
+        for item in history:
+            if item.role not in {"user", "assistant"}:
+                continue
+            if item.content.strip():
+                provider_messages.append({"role": item.role, "content": item.content})
+        return provider_messages
+
     async def _append_assistant_text(self, conversation_id: str, message_id: str, delta: str) -> None:
         async with self._lock:
             messages = self._messages.get(conversation_id, [])
             target = next((msg for msg in messages if msg.id == message_id), None)
             if target:
                 target.content += delta
+                target.status = "streaming"
+                self._conversations[conversation_id].updated_at = utc_now_iso()
+
+    async def _append_assistant_thinking(self, conversation_id: str, message_id: str, delta: str) -> None:
+        async with self._lock:
+            messages = self._messages.get(conversation_id, [])
+            target = next((msg for msg in messages if msg.id == message_id), None)
+            if target:
+                target.thinking += delta
                 target.status = "streaming"
                 self._conversations[conversation_id].updated_at = utc_now_iso()
 

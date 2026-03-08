@@ -62,6 +62,7 @@ async def list_messages(conversation_id: str) -> ListMessagesResponse:
                 conversationId=item.conversation_id,
                 role=item.role,
                 content=item.content,
+                thinking=item.thinking,
                 status=item.status,
                 createdAt=item.created_at,
             )
