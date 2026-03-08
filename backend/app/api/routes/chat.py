@@ -1,8 +1,9 @@
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
+from app.core.errors import AppError
 from app.core.logging import get_logger, log_event
 from app.schemas.chat import (
     AbortRequest,
@@ -22,8 +23,9 @@ logger = get_logger("chatweb.backend.routes.chat")
 
 @router.get("/conversations", response_model=ListConversationsResponse)
 async def list_conversations() -> ListConversationsResponse:
+    log_event(logger, logging.INFO, "conversations.list.start")
     rows = await chat_service.list_conversations()
-    log_event(logger, logging.INFO, "conversations.list", {"count": len(rows)})
+    log_event(logger, logging.INFO, "conversations.list.done", {"count": len(rows)})
     return ListConversationsResponse(
         conversations=[
             {
@@ -39,8 +41,9 @@ async def list_conversations() -> ListConversationsResponse:
 
 @router.post("/conversations", response_model=CreateConversationResponse)
 async def create_conversation() -> CreateConversationResponse:
+    log_event(logger, logging.INFO, "conversations.create.start")
     item = await chat_service.create_conversation()
-    log_event(logger, logging.INFO, "conversations.create", {"conversation_id": item.id})
+    log_event(logger, logging.INFO, "conversations.create.done", {"conversation_id": item.id})
     return CreateConversationResponse(
         conversation={
             "id": item.id,
@@ -53,8 +56,9 @@ async def create_conversation() -> CreateConversationResponse:
 
 @router.get("/conversations/{conversation_id}/messages", response_model=ListMessagesResponse)
 async def list_messages(conversation_id: str) -> ListMessagesResponse:
+    log_event(logger, logging.INFO, "messages.list.start", {"conversation_id": conversation_id})
     rows = await chat_service.list_messages(conversation_id)
-    log_event(logger, logging.INFO, "messages.list", {"conversation_id": conversation_id, "count": len(rows)})
+    log_event(logger, logging.INFO, "messages.list.done", {"conversation_id": conversation_id, "count": len(rows)})
     return ListMessagesResponse(
         messages=[
             MessageDTO(
@@ -75,7 +79,7 @@ async def list_messages(conversation_id: str) -> ListMessagesResponse:
 async def stream_chat(payload: SendMessageRequest) -> StreamingResponse:
     content = payload.content.strip()
     if not content:
-        raise HTTPException(status_code=400, detail="content is required")
+        raise AppError("CHAT_EMPTY_CONTENT", "content is required", status_code=400)
 
     log_event(
         logger,
@@ -102,6 +106,7 @@ async def stream_chat(payload: SendMessageRequest) -> StreamingResponse:
 
 @router.post("/chat/abort", response_model=SimpleResponse)
 async def abort_chat(payload: AbortRequest) -> SimpleResponse:
+    log_event(logger, logging.INFO, "chat.abort.start", {"conversation_id": payload.conversation_id})
     await chat_service.abort(payload.conversation_id)
-    log_event(logger, logging.WARNING, "chat.abort", {"conversation_id": payload.conversation_id})
+    log_event(logger, logging.WARNING, "chat.abort.done", {"conversation_id": payload.conversation_id})
     return SimpleResponse(ok=True)

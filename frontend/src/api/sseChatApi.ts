@@ -200,6 +200,22 @@ export class SseChatApi implements IChatApi {
           yield { delta: "", done: true };
           return;
         }
+        if (parsed.event === "error") {
+          try {
+            const payload = JSON.parse(parsed.data) as { code?: string; message?: string };
+            const message = payload.code
+              ? `${payload.code}: ${payload.message ?? "stream error"}`
+              : payload.message ?? "stream error";
+            const streamError = new Error(message);
+            streamError.name = "StreamError";
+            throw streamError;
+          } catch (error) {
+            if (error instanceof Error) {
+              throw error;
+            }
+            throw new Error("stream error");
+          }
+        }
       }
     }
 

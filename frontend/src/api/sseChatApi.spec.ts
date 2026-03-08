@@ -114,4 +114,32 @@ describe("SseChatApi", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(chunks).toHaveLength(0);
   });
+
+  it("throws stream error when server sends error event", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      body: textStream('event: error\ndata: {"code":"AI_PROVIDER_ERROR","message":"provider failed"}\n\n')
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const api = new SseChatApi({
+      baseUrl: "http://127.0.0.1:8000/api",
+      streamFormat: "json"
+    });
+    const messages: Message[] = [
+      {
+        id: "u1",
+        conversationId: "c1",
+        role: "user",
+        content: "hello",
+        status: "done",
+        createdAt: new Date().toISOString()
+      }
+    ];
+
+    await expect(async () => {
+      for await (const _ of api.streamReply({ conversationId: "c1", messages })) {
+      }
+    }).rejects.toThrow("AI_PROVIDER_ERROR: provider failed");
+  });
 });

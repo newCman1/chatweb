@@ -50,6 +50,10 @@ Use this skill whenever the task modifies backend code.
 - Keep backend logger redaction active for sensitive fields.
 - Keep backend smoke tests passing (`pytest tests -q`).
 - Backend startup should load `backend/logging.xml` when present for log level/format.
+- Every backend module flow should emit:
+  - key info logs (`*.start`, `*.done`)
+  - error logs (`*.error`)
+  - stable error code response for non-stream failures
 
 ## Skill Sync Rule
 

@@ -63,3 +63,36 @@ def test_stream_fallback_when_provider_fails(monkeypatch):
     assert stream_response.status_code == 200
     assert "event: chunk" in stream_response.text
     assert "event: done" in stream_response.text
+
+
+def test_error_code_for_empty_stream_content():
+    create = client.post("/api/conversations")
+    conversation_id = create.json()["conversation"]["id"]
+    response = client.post(
+        "/api/chat/stream",
+        json={
+            "conversationId": conversation_id,
+            "content": "   ",
+            "streamFormat": "json",
+        },
+    )
+    assert response.status_code == 400
+    payload = response.json()["error"]
+    assert payload["code"] == "CHAT_EMPTY_CONTENT"
+    assert "requestId" in payload
+
+
+def test_error_code_for_missing_conversation_messages():
+    response = client.get("/api/conversations/not-exists/messages")
+    assert response.status_code == 404
+    payload = response.json()["error"]
+    assert payload["code"] == "CONVERSATION_NOT_FOUND"
+    assert "requestId" in payload
+
+
+def test_error_code_for_validation_failure():
+    response = client.post("/api/chat/abort", json={})
+    assert response.status_code == 422
+    payload = response.json()["error"]
+    assert payload["code"] == "REQUEST_VALIDATION_ERROR"
+    assert "requestId" in payload

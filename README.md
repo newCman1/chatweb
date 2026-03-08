@@ -129,6 +129,18 @@ npm run dev
 - `POST /api/chat/stream`
 - `POST /api/chat/abort`
 
+Error response contract (non-stream endpoints):
+
+```json
+{
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Human readable message",
+    "requestId": "uuid"
+  }
+}
+```
+
 ## Optional AI Provider (Backend)
 
 If you configure an API key, backend will stream from an OpenAI-compatible `/chat/completions` endpoint. Without key, it falls back to built-in mock stream.
